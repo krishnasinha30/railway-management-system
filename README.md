@@ -88,19 +88,21 @@ CLIENT_URL=https://YOUR-VERCEL-FRONTEND.vercel.app
 NODE_ENV=production
 ```
 
-### 4. Configure the frontend on Vercel
+### 4. Configure the frontend on Netlify or Vercel
 
-1. Import the repository into Vercel.
+1. Import the repository into Netlify or Vercel.
 2. Set the project root to the `client` folder if needed.
-3. Add these Vercel environment variables:
+3. Add these frontend environment variables:
 
 ```env
 VITE_API_URL=https://YOUR-RENDER-BACKEND.onrender.com/api
 VITE_SOCKET_URL=https://YOUR-RENDER-BACKEND.onrender.com
 ```
 
+For this project, the frontend domain is intended to be `https://railcenter.netlify.app`.
+
 4. Deploy the project.
-5. After the frontend is live, update `CLIENT_URL` in Render to the new Vercel domain.
+5. After the frontend is live, update `CLIENT_URL` in Render to the new frontend domain.
 
 ### 5. Health check and CI
 

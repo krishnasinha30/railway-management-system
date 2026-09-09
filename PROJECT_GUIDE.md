@@ -119,9 +119,9 @@ npm install
 npm start
 ```
 
-### Step 4: Configure Vercel frontend
+### Step 4: Configure Netlify frontend
 
-1. Import the project into Vercel.
+1. Import the project into Netlify.
 2. If the app is inside the `client` folder, set the project root accordingly.
 3. Add the following environment variables:
 
@@ -130,8 +130,10 @@ VITE_API_URL=https://YOUR-RENDER-BACKEND.onrender.com/api
 VITE_SOCKET_URL=https://YOUR-RENDER-BACKEND.onrender.com
 ```
 
+The target frontend domain for this project is `https://railcenter.netlify.app`.
+
 4. Deploy the frontend.
-5. Update `CLIENT_URL` in Render after the frontend uses its final Vercel URL.
+5. Update `CLIENT_URL` in Render after the frontend uses its final Netlify URL.
 
 ### Step 5: Test the backend health endpoint
 
