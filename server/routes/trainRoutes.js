@@ -1,0 +1,14 @@
+const router = require('express').Router();
+const controller = require('../controllers/trainController');
+const auth = require('../middleware/authMiddleware');
+const roles = require('../middleware/roleMiddleware');
+const validate = require('../middleware/validateRequest');
+const validators = require('../validators/trainValidators');
+router.get('/', controller.list);
+router.get('/search', controller.search);
+router.get('/:id', controller.get);
+router.post('/', auth, roles('admin'), validators.create, validate, controller.create);
+router.put('/:id', auth, roles('admin', 'employee'), validators.update, validate, controller.update);
+router.delete('/:id', auth, roles('admin'), controller.remove);
+router.post('/:id/favourite', auth, roles('passenger'), controller.favourite);
+module.exports = router;

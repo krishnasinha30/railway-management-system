@@ -1,0 +1,1373 @@
+{
+  "info": {
+    "name": "Railway Management System API",
+    "description": "Postman collection for the Railway Management System JWT and role-based API validation.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:5000/api" },
+    { "key": "adminEmail", "value": "admin@railway.com" },
+    { "key": "adminPassword", "value": "Admin@123" },
+    { "key": "employeeEmail", "value": "employee@railway.com" },
+    { "key": "employeePassword", "value": "Employee@123" },
+    { "key": "passengerEmail", "value": "passenger@railway.com" },
+    { "key": "passengerPassword", "value": "Passenger@123" },
+    { "key": "adminToken", "value": "" },
+    { "key": "employeeToken", "value": "" },
+    { "key": "passengerToken", "value": "" },
+    { "key": "trainId", "value": "" },
+    { "key": "stationId", "value": "" },
+    { "key": "destinationStationId", "value": "" },
+    { "key": "bookingId", "value": "" },
+    { "key": "userId", "value": "" },
+    { "key": "pnrNumber", "value": "" },
+    { "key": "vendorId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Quick Success Checks",
+      "item": [
+        {
+          "name": "Login as admin (200 OK)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Admin login succeeded', function () { const json = pm.response.json(); pm.expect(json.success).to.equal(true); if (json.data && json.data.token) { pm.environment.set('adminToken', json.data.token); } });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}\"\n}"
+            },
+            "url": "{{baseUrl}}/auth/login"
+          }
+        },
+        {
+          "name": "Login as employee (200 OK)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Employee login succeeded', function () { const json = pm.response.json(); pm.expect(json.success).to.equal(true); if (json.data && json.data.token) { pm.environment.set('employeeToken', json.data.token); } });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{employeeEmail}}\",\n  \"password\": \"{{employeePassword}}\"\n}"
+            },
+            "url": "{{baseUrl}}/auth/login"
+          }
+        },
+        {
+          "name": "Login as passenger (200 OK)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Passenger login succeeded', function () { const json = pm.response.json(); pm.expect(json.success).to.equal(true); if (json.data && json.data.token) { pm.environment.set('passengerToken', json.data.token); } });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{passengerEmail}}\",\n  \"password\": \"{{passengerPassword}}\"\n}"
+            },
+            "url": "{{baseUrl}}/auth/login"
+          }
+        },
+        {
+          "name": "Admin dashboard (200 OK)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Admin dashboard accessible', function () { const json = pm.response.json(); pm.expect(json.success).to.equal(true); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": "{{baseUrl}}/dashboard/admin"
+          }
+        },
+        {
+          "name": "Employee dashboard (200 OK)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Employee dashboard accessible', function () { const json = pm.response.json(); pm.expect(json.success).to.equal(true); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{employeeToken}}" }
+            ],
+            "url": "{{baseUrl}}/dashboard/employee"
+          }
+        },
+        {
+          "name": "Passenger dashboard (200 OK)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Passenger dashboard accessible', function () { const json = pm.response.json(); pm.expect(json.success).to.equal(true); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{passengerToken}}" }
+            ],
+            "url": "{{baseUrl}}/dashboard/passenger"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Register passenger",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 201', function () { pm.response.to.have.status(201); });",
+                  "pm.test('Response has success field', function () { const json = pm.response.json(); pm.expect(json).to.have.property('success'); });",
+                  "pm.test('Message or data exists', function () { const json = pm.response.json(); pm.expect(json.message || json.data).to.exist; });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"New Passenger\",\n  \"email\": \"newpassenger@example.com\",\n  \"password\": \"Password123\"\n}"
+            },
+            "url": "{{baseUrl}}/auth/register"
+          }
+        },
+        {
+          "name": "Login as passenger",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Response has success field', function () { const json = pm.response.json(); pm.expect(json).to.have.property('success'); });",
+                  "pm.test('Token and data exist', function () { const json = pm.response.json(); pm.expect(json.message || json.data).to.exist; if (json.success && json.data && json.data.token) { pm.environment.set('passengerToken', json.data.token); if (json.data.user && json.data.user._id) { pm.environment.set('userId', json.data.user._id); } } });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"passenger@railway.com\",\n  \"password\": \"Passenger@123\"\n}"
+            },
+            "url": "{{baseUrl}}/auth/login"
+          }
+        },
+        {
+          "name": "Login as employee",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Response has success field', function () { const json = pm.response.json(); pm.expect(json).to.have.property('success'); });",
+                  "pm.test('Employee token saved', function () { const json = pm.response.json(); pm.expect(json.message || json.data).to.exist; if (json.success && json.data && json.data.token) { pm.environment.set('employeeToken', json.data.token); } });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"employee@railway.com\",\n  \"password\": \"Employee@123\"\n}"
+            },
+            "url": "{{baseUrl}}/auth/login"
+          }
+        },
+        {
+          "name": "Login as admin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Response has success field', function () { const json = pm.response.json(); pm.expect(json).to.have.property('success'); });",
+                  "pm.test('Admin token saved', function () { const json = pm.response.json(); pm.expect(json.message || json.data).to.exist; if (json.success && json.data && json.data.token) { pm.environment.set('adminToken', json.data.token); } });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@railway.com\",\n  \"password\": \"Admin@123\"\n}"
+            },
+            "url": "{{baseUrl}}/auth/login"
+          }
+        },
+        {
+          "name": "Invalid login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 401', function () { pm.response.to.have.status(401); });",
+                  "pm.test('Response has success field', function () { const json = pm.response.json(); pm.expect(json).to.have.property('success'); });",
+                  "pm.test('Error message exists', function () { const json = pm.response.json(); pm.expect(json.message || json.errors).to.exist; });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@railway.com\",\n  \"password\": \"WrongPassword\"\n}"
+            },
+            "url": "{{baseUrl}}/auth/login"
+          }
+        },
+        {
+          "name": "Get current user",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Response has success field', function () { const json = pm.response.json(); pm.expect(json).to.have.property('success'); });",
+                  "pm.test('User data exists', function () { const json = pm.response.json(); pm.expect(json.message || json.data).to.exist; });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": "{{baseUrl}}/auth/me"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Stations",
+      "item": [
+        {
+          "name": "Get all stations",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Response has success field', function () { const json = pm.response.json(); pm.expect(json).to.have.property('success'); });",
+                  "pm.test('Stations data exists', function () { const json = pm.response.json(); pm.expect(json.message || json.data).to.exist; if (json.success && Array.isArray(json.data) && json.data.length) { pm.environment.set('stationId', json.data[0]._id); if (json.data[1]) { pm.environment.set('destinationStationId', json.data[1]._id); } } });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/stations"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Trains",
+      "item": [
+        {
+          "name": "Get all trains",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Response has success field', function () { const json = pm.response.json(); pm.expect(json).to.have.property('success'); });",
+                  "pm.test('Train data exists', function () { const json = pm.response.json(); pm.expect(json.message || json.data).to.exist; if (json.success && Array.isArray(json.data) && json.data.length) { pm.environment.set('trainId', json.data[0]._id); } });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/trains"
+          }
+        },
+        {
+          "name": "Search by train number",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Response has success field', function () { const json = pm.response.json(); pm.expect(json).to.have.property('success'); });",
+                  "pm.test('Search result exists', function () { const json = pm.response.json(); pm.expect(json.message || json.data).to.exist; });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/trains/search?query=12301"
+          }
+        },
+        {
+          "name": "Search by train name",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Response has success field', function () { const json = pm.response.json(); pm.expect(json).to.have.property('success'); });",
+                  "pm.test('Search result exists', function () { const json = pm.response.json(); pm.expect(json.message || json.data).to.exist; });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/trains/search?query=Rajdhani"
+          }
+        },
+        {
+          "name": "Filter train by source/destination/class",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Response has success field', function () { const json = pm.response.json(); pm.expect(json).to.have.property('success'); });",
+                  "pm.test('Filtered data exists', function () { const json = pm.response.json(); pm.expect(json.message || json.data).to.exist; });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/trains?source={{stationId}}&destination={{destinationStationId}}&status=On%20Time"
+          }
+        },
+        {
+          "name": "Admin create train",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 201', function () { pm.response.to.have.status(201); });",
+                  "pm.test('Response has success field', function () { const json = pm.response.json(); pm.expect(json).to.have.property('success'); });",
+                  "pm.test('Train created message exists', function () { const json = pm.response.json(); pm.expect(json.message || json.data).to.exist; });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"trainNumber\": \"12951\",\n  \"trainName\": \"Demo Express\",\n  \"category\": \"Express\",\n  \"source\": \"{{stationId}}\",\n  \"destination\": \"{{destinationStationId}}\",\n  \"scheduledDeparture\": \"09:00\",\n  \"scheduledArrival\": \"12:15\",\n  \"platformNumber\": \"4\",\n  \"classesAvailable\": [\"CC\", \"2A\"],\n  \"availableClasses\": [\n    { \"code\": \"CC\", \"name\": \"Chair Car\", \"baseFare\": 950, \"totalSeats\": 72, \"availableSeats\": 72 },\n    { \"code\": \"2A\", \"name\": \"AC 2 Tier\", \"baseFare\": 2100, \"totalSeats\": 72, \"availableSeats\": 72 }\n  ]\n}"
+            },
+            "url": "{{baseUrl}}/trains"
+          }
+        },
+        {
+          "name": "Admin update train",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Response has success field', function () { const json = pm.response.json(); pm.expect(json).to.have.property('success'); });",
+                  "pm.test('Train update message exists', function () { const json = pm.response.json(); pm.expect(json.message || json.data).to.exist; });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"Delayed\",\n  \"delayMinutes\": 12,\n  \"delayReason\": \"Operational update\"\n}"
+            },
+            "url": "{{baseUrl}}/trains/{{trainId}}"
+          }
+        },
+        {
+          "name": "Employee operational update",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Response has success field', function () { const json = pm.response.json(); pm.expect(json).to.have.property('success'); });",
+                  "pm.test('Operational update message exists', function () { const json = pm.response.json(); pm.expect(json.message || json.data).to.exist; });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{employeeToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"platformNumber\": \"5\",\n  \"status\": \"Delayed\",\n  \"delayMinutes\": 10,\n  \"delayReason\": \"Signal check\"\n}"
+            },
+            "url": "{{baseUrl}}/trains/{{trainId}}"
+          }
+        },
+        {
+          "name": "Admin delete train",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Response has success field', function () { const json = pm.response.json(); pm.expect(json).to.have.property('success'); });",
+                  "pm.test('Delete message exists', function () { const json = pm.response.json(); pm.expect(json.message || json.data).to.exist; });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": "{{baseUrl}}/trains/{{trainId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Bookings",
+      "item": [
+        {
+          "name": "Create mock booking",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 201', function () { pm.response.to.have.status(201); });",
+                  "pm.test('Response has success field', function () { const json = pm.response.json(); pm.expect(json).to.have.property('success'); });",
+                  "pm.test('Booking data exists', function () { const json = pm.response.json(); pm.expect(json.message || json.data).to.exist; if (json.success && json.data && json.data._id) { pm.environment.set('bookingId', json.data._id); if (json.data.pnrNumber) { pm.environment.set('pnrNumber', json.data.pnrNumber); } } });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{passengerToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"train\": \"{{trainId}}\",\n  \"journeyDate\": \"2026-12-15\",\n  \"boardingStation\": \"{{stationId}}\",\n  \"destinationStation\": \"{{destinationStationId}}\",\n  \"travelClass\": \"CC\",\n  \"passengerCount\": 1,\n  \"totalFare\": 850,\n  \"paymentMethod\": \"Mock Wallet\",\n  \"walletAmountPaid\": 850,\n  \"captchaAnswer\": \"A\",\n  \"captchaChallenge\": \"A\"\n}"
+            },
+            "url": "{{baseUrl}}/bookings"
+          }
+        },
+        {
+          "name": "Get passenger bookings",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Response has success field', function () { const json = pm.response.json(); pm.expect(json).to.have.property('success'); });",
+                  "pm.test('Bookings record exists', function () { const json = pm.response.json(); pm.expect(json.message || json.data).to.exist; });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{passengerToken}}" }
+            ],
+            "url": "{{baseUrl}}/bookings/my-bookings"
+          }
+        },
+        {
+          "name": "Search booking by booking reference",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Response has success field', function () { const json = pm.response.json(); pm.expect(json).to.have.property('success'); });",
+                  "pm.test('Search result exists', function () { const json = pm.response.json(); pm.expect(json.message || json.data).to.exist; });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": "{{baseUrl}}/bookings?search=RMS"
+          }
+        },
+        {
+          "name": "Cancel booking",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Response has success field', function () { const json = pm.response.json(); pm.expect(json).to.have.property('success'); });",
+                  "pm.test('Cancellation message exists', function () { const json = pm.response.json(); pm.expect(json.message || json.data).to.exist; });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{passengerToken}}" }
+            ],
+            "url": "{{baseUrl}}/bookings/{{bookingId}}/cancel"
+          }
+        },
+        {
+          "name": "Admin get all bookings",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Response has success field', function () { const json = pm.response.json(); pm.expect(json).to.have.property('success'); });",
+                  "pm.test('Admin bookings data exists', function () { const json = pm.response.json(); pm.expect(json.message || json.data).to.exist; });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": "{{baseUrl}}/bookings"
+          }
+        }
+      ]
+    },
+    {
+      "name": "PNR",
+      "item": [
+        {
+          "name": "Passenger checks own PNR",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Response has success field', function () { const json = pm.response.json(); pm.expect(json).to.have.property('success'); });",
+                  "pm.test('PNR data exists', function () { const json = pm.response.json(); pm.expect(json.message || json.data).to.exist; });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{passengerToken}}" }
+            ],
+            "url": "{{baseUrl}}/bookings/pnr/{{pnrNumber}}"
+          }
+        },
+        {
+          "name": "Admin searches any PNR",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Response has success field', function () { const json = pm.response.json(); pm.expect(json).to.have.property('success'); });",
+                  "pm.test('Admin PNR result exists', function () { const json = pm.response.json(); pm.expect(json.message || json.data).to.exist; });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": "{{baseUrl}}/bookings/pnr/{{pnrNumber}}"
+          }
+        },
+        {
+          "name": "Test passenger restriction for another user PNR",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 404', function () { pm.response.to.have.status(404); });",
+                  "pm.test('Response has success field', function () { const json = pm.response.json(); pm.expect(json).to.have.property('success'); });",
+                  "pm.test('Restriction message exists', function () { const json = pm.response.json(); pm.expect(json.message || json.errors).to.exist; });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{passengerToken}}" }
+            ],
+            "url": "{{baseUrl}}/bookings/pnr/2600000001"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Wallet",
+      "item": [
+        {
+          "name": "Get wallet balance",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Response has success field', function () { const json = pm.response.json(); pm.expect(json).to.have.property('success'); });",
+                  "pm.test('Wallet data exists', function () { const json = pm.response.json(); pm.expect(json.message || json.data).to.exist; });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{passengerToken}}" }
+            ],
+            "url": "{{baseUrl}}/wallet/mine"
+          }
+        },
+        {
+          "name": "Add mock money",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Response has success field', function () { const json = pm.response.json(); pm.expect(json).to.have.property('success'); });",
+                  "pm.test('Top-up message exists', function () { const json = pm.response.json(); pm.expect(json.message || json.data).to.exist; });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{passengerToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 500\n}"
+            },
+            "url": "{{baseUrl}}/wallet/add-money"
+          }
+        },
+        {
+          "name": "Get transaction history",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Response has success field', function () { const json = pm.response.json(); pm.expect(json).to.have.property('success'); });",
+                  "pm.test('Transaction information exists', function () { const json = pm.response.json(); pm.expect(json.message || json.data).to.exist; });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": "{{baseUrl}}/wallet/transactions"
+          }
+        },
+        {
+          "name": "Admin credit wallet",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Response has success field', function () { const json = pm.response.json(); pm.expect(json).to.have.property('success'); });",
+                  "pm.test('Credit action message exists', function () { const json = pm.response.json(); pm.expect(json.message || json.data).to.exist; });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"Credit\",\n  \"amount\": 150,\n  \"reason\": \"Demo admin credit\"\n}"
+            },
+            "url": "{{baseUrl}}/wallet/users/{{userId}}/adjust"
+          }
+        },
+        {
+          "name": "Admin debit wallet",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Response has success field', function () { const json = pm.response.json(); pm.expect(json).to.have.property('success'); });",
+                  "pm.test('Debit action message exists', function () { const json = pm.response.json(); pm.expect(json.message || json.data).to.exist; });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"Debit\",\n  \"amount\": 50,\n  \"reason\": \"Demo admin debit\"\n}"
+            },
+            "url": "{{baseUrl}}/wallet/users/{{userId}}/adjust"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Food Orders",
+      "item": [
+        {
+          "name": "Get vendors",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Response has success field', function () { const json = pm.response.json(); pm.expect(json).to.have.property('success'); });",
+                  "pm.test('Vendors data exists', function () { const json = pm.response.json(); pm.expect(json.message || json.data).to.exist; if (json.success && Array.isArray(json.data) && json.data.length) { pm.environment.set('vendorId', json.data[0]._id); } });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/food/vendors"
+          }
+        },
+        {
+          "name": "Create food order",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 201', function () { pm.response.to.have.status(201); });",
+                  "pm.test('Response has success field', function () { const json = pm.response.json(); pm.expect(json).to.have.property('success'); });",
+                  "pm.test('Food order message exists', function () { const json = pm.response.json(); pm.expect(json.message || json.data).to.exist; });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{passengerToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"booking\": \"{{bookingId}}\",\n  \"vendor\": \"{{vendorId}}\",\n  \"deliveryStation\": \"{{stationId}}\",\n  \"items\": [\n    { \"itemName\": \"Paneer Thali\", \"quantity\": 1, \"unitPrice\": 220 }\n  ],\n  \"coachNumber\": \"C1\",\n  \"seatNumber\": \"21\",\n  \"paymentMethod\": \"Mock Wallet\"\n}"
+            },
+            "url": "{{baseUrl}}/food/orders"
+          }
+        },
+        {
+          "name": "Get own food orders",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Response has success field', function () { const json = pm.response.json(); pm.expect(json).to.have.property('success'); });",
+                  "pm.test('Food order list exists', function () { const json = pm.response.json(); pm.expect(json.message || json.data).to.exist; });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{passengerToken}}" }
+            ],
+            "url": "{{baseUrl}}/food/orders"
+          }
+        },
+        {
+          "name": "Admin update food order status",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Response has success field', function () { const json = pm.response.json(); pm.expect(json).to.have.property('success'); });",
+                  "pm.test('Food order update message exists', function () { const json = pm.response.json(); pm.expect(json.message || json.data).to.exist; });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orderStatus\": \"Preparing\"\n}"
+            },
+            "url": "{{baseUrl}}/food/orders/{{bookingId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Announcements",
+      "item": [
+        {
+          "name": "Get announcements",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Response has success field', function () { const json = pm.response.json(); pm.expect(json).to.have.property('success'); });",
+                  "pm.test('Announcements payload exists', function () { const json = pm.response.json(); pm.expect(json.message || json.data).to.exist; });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/announcements"
+          }
+        },
+        {
+          "name": "Create announcement",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 201', function () { pm.response.to.have.status(201); });",
+                  "pm.test('Response has success field', function () { const json = pm.response.json(); pm.expect(json).to.have.property('success'); });",
+                  "pm.test('Announcement message exists', function () { const json = pm.response.json(); pm.expect(json.message || json.data).to.exist; });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{employeeToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Platform update\",\n  \"message\": \"Passengers should check the display board before boarding.\",\n  \"station\": \"{{stationId}}\",\n  \"priority\": \"medium\"\n}"
+            },
+            "url": "{{baseUrl}}/announcements"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Employee Tasks",
+      "item": [
+        {
+          "name": "Get my tasks",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Response has success field', function () { const json = pm.response.json(); pm.expect(json).to.have.property('success'); });",
+                  "pm.test('Tasks data exists', function () { const json = pm.response.json(); pm.expect(json.message || json.data).to.exist; });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{employeeToken}}" }
+            ],
+            "url": "{{baseUrl}}/tasks/my-tasks"
+          }
+        },
+        {
+          "name": "Create task",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 201', function () { pm.response.to.have.status(201); });",
+                  "pm.test('Response has success field', function () { const json = pm.response.json(); pm.expect(json).to.have.property('success'); });",
+                  "pm.test('Task creation message exists', function () { const json = pm.response.json(); pm.expect(json.message || json.data).to.exist; });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"employee\": \"{{userId}}\",\n  \"station\": \"{{stationId}}\",\n  \"title\": \"Daily platform check\",\n  \"description\": \"Verify the board and signage before 10 AM.\",\n  \"dueDate\": \"2026-12-12T09:00:00.000Z\"\n}"
+            },
+            "url": "{{baseUrl}}/tasks"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin Users",
+      "item": [
+        {
+          "name": "Get all users",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Response has success field', function () { const json = pm.response.json(); pm.expect(json).to.have.property('success'); });",
+                  "pm.test('Users list exists', function () { const json = pm.response.json(); pm.expect(json.message || json.data).to.exist; });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": "{{baseUrl}}/auth/users"
+          }
+        },
+        {
+          "name": "Toggle block user",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Response has success field', function () { const json = pm.response.json(); pm.expect(json).to.have.property('success'); });",
+                  "pm.test('User status update exists', function () { const json = pm.response.json(); pm.expect(json.message || json.data).to.exist; });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": "{{baseUrl}}/auth/users/{{userId}}/toggle-blocked"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Dashboards",
+      "item": [
+        {
+          "name": "Admin dashboard",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Response has success field', function () { const json = pm.response.json(); pm.expect(json).to.have.property('success'); });",
+                  "pm.test('Dashboard data exists', function () { const json = pm.response.json(); pm.expect(json.message || json.data).to.exist; });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": "{{baseUrl}}/dashboard/admin"
+          }
+        },
+        {
+          "name": "Employee dashboard",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Response has success field', function () { const json = pm.response.json(); pm.expect(json).to.have.property('success'); });",
+                  "pm.test('Employee dashboard data exists', function () { const json = pm.response.json(); pm.expect(json.message || json.data).to.exist; });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{employeeToken}}" }
+            ],
+            "url": "{{baseUrl}}/dashboard/employee"
+          }
+        },
+        {
+          "name": "Passenger dashboard",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Response has success field', function () { const json = pm.response.json(); pm.expect(json).to.have.property('success'); });",
+                  "pm.test('Passenger dashboard data exists', function () { const json = pm.response.json(); pm.expect(json.message || json.data).to.exist; });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{passengerToken}}" }
+            ],
+            "url": "{{baseUrl}}/dashboard/passenger"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Security Testing",
+      "item": [
+        {
+          "name": "Passenger denied admin route",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 403', function () { pm.response.to.have.status(403); });",
+                  "pm.test('Response has success field', function () { const json = pm.response.json(); pm.expect(json).to.have.property('success'); });",
+                  "pm.test('Access denied message exists', function () { const json = pm.response.json(); pm.expect(json.message || json.errors).to.exist; });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{passengerToken}}" }
+            ],
+            "url": "{{baseUrl}}/dashboard/admin"
+          }
+        },
+        {
+          "name": "Employee denied admin route",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 403', function () { pm.response.to.have.status(403); });",
+                  "pm.test('Response has success field', function () { const json = pm.response.json(); pm.expect(json).to.have.property('success'); });",
+                  "pm.test('Access denied message exists', function () { const json = pm.response.json(); pm.expect(json.message || json.errors).to.exist; });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{employeeToken}}" }
+            ],
+            "url": "{{baseUrl}}/dashboard/admin"
+          }
+        },
+        {
+          "name": "Missing JWT",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 401', function () { pm.response.to.have.status(401); });",
+                  "pm.test('Response has success field', function () { const json = pm.response.json(); pm.expect(json).to.have.property('success'); });",
+                  "pm.test('Authentication requirement message exists', function () { const json = pm.response.json(); pm.expect(json.message || json.errors).to.exist; });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/auth/me"
+          }
+        },
+        {
+          "name": "Invalid JWT",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 401', function () { pm.response.to.have.status(401); });",
+                  "pm.test('Response has success field', function () { const json = pm.response.json(); pm.expect(json).to.have.property('success'); });",
+                  "pm.test('Invalid token message exists', function () { const json = pm.response.json(); pm.expect(json.message || json.errors).to.exist; });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer invalid.token.value" }
+            ],
+            "url": "{{baseUrl}}/auth/me"
+          }
+        },
+        {
+          "name": "Invalid form input",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 400', function () { pm.response.to.have.status(400); });",
+                  "pm.test('Response has success field', function () { const json = pm.response.json(); pm.expect(json).to.have.property('success'); });",
+                  "pm.test('Validation message exists', function () { const json = pm.response.json(); pm.expect(json.message || json.errors).to.exist; });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"not-an-email\",\n  \"password\": \"\"\n}"
+            },
+            "url": "{{baseUrl}}/auth/login"
+          }
+        },
+        {
+          "name": "Blocked user request",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 403', function () { pm.response.to.have.status(403); });",
+                  "pm.test('Response has success field', function () { const json = pm.response.json(); pm.expect(json).to.have.property('success'); });",
+                  "pm.test('Blocked account message exists', function () { const json = pm.response.json(); pm.expect(json.message || json.errors).to.exist; });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{passengerToken}}" }
+            ],
+            "url": "{{baseUrl}}/dashboard/passenger"
+          }
+        }
+      ]
+    }
+  ]
+}

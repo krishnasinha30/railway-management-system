@@ -1,0 +1,54 @@
+name: Railway Management System CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            client/package-lock.json
+            server/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: ./client
+        run: npm ci
+
+      - name: Build frontend
+        working-directory: ./client
+        env:
+          VITE_API_URL: ${{ secrets.VITE_API_URL || 'https://YOUR-RENDER-BACKEND.onrender.com/api' }}
+          VITE_SOCKET_URL: ${{ secrets.VITE_SOCKET_URL || 'https://YOUR-RENDER-BACKEND.onrender.com' }}
+        run: npm run build
+
+      - name: Install backend dependencies
+        working-directory: ./server
+        run: npm ci
+
+      - name: Validate backend syntax
+        working-directory: ./server
+        shell: bash
+        run: find . -name '*.js' -not -path './node_modules/*' -print0 | xargs -0 -n1 node --check
+
+      - name: Basic backend health-check availability
+        working-directory: ./server
+        env:
+          NODE_ENV: test
+          PORT: 5000
+          MONGO_URI: mongodb://127.0.0.1:27017/railway-management-system-test
+          JWT_SECRET: ${{ secrets.JWT_SECRET || 'test-ci-secret' }}
+          JWT_EXPIRES_IN: 7d
+          CLIENT_URL: ${{ secrets.CLIENT_URL || 'https://example.vercel.app' }}
+        run: |
+          node -e "const fs = require('fs'); const file = 'server.js'; if (!fs.existsSync(file)) { throw new Error('server.js is missing'); } console.log('Backend validation step reached successfully');"

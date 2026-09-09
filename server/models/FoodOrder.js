@@ -1,0 +1,6 @@
+const mongoose = require('mongoose');
+const itemSchema = new mongoose.Schema({ itemName: String, quantity: { type: Number, min: 1 }, unitPrice: { type: Number, min: 0 } }, { _id: false });
+const schema = new mongoose.Schema({
+  orderReference: { type: String, unique: true, required: true }, passenger: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }, booking: { type: mongoose.Schema.Types.ObjectId, ref: 'Booking', required: true }, train: { type: mongoose.Schema.Types.ObjectId, ref: 'Train', required: true }, vendor: { type: mongoose.Schema.Types.ObjectId, ref: 'FoodVendor', required: true }, deliveryStation: { type: mongoose.Schema.Types.ObjectId, ref: 'Station', required: true }, coachNumber: String, seatNumber: String, items: [itemSchema], totalAmount: { type: Number, min: 0, required: true }, paymentMethod: { type: String, enum: ['Mock Wallet', 'Demo UPI'], default: 'Mock Wallet' }, paymentStatus: { type: String, enum: ['Paid', 'Pending', 'Refunded'], default: 'Paid' }, orderStatus: { type: String, enum: ['Placed', 'Preparing', 'Dispatched', 'Delivered', 'Cancelled'], default: 'Placed' },
+}, { timestamps: true });
+module.exports = mongoose.model('FoodOrder', schema);

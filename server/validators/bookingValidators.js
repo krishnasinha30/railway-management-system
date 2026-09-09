@@ -1,0 +1,2 @@
+const { body } = require('express-validator');
+exports.create = [body('train').isMongoId(), body('journeyDate').isISO8601(), body('boardingStation').isMongoId(), body('destinationStation').isMongoId(), body('travelClass').notEmpty(), body('passengerCount').isInt({ min: 1, max: 10 }), body('passengerCategory').optional().isIn(['General', 'Army', 'Senior Citizen']), body('captchaAnswer').trim().notEmpty(), body('captchaChallenge').trim().notEmpty()];

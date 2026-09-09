@@ -1,0 +1,17 @@
+const router = require('express').Router();
+const { register, login, me, listEmployees, updateEmployee, profile, savedPassengers, removeSavedPassenger, listUsers, toggleBlocked } = require('../controllers/authController');
+const auth = require('../middleware/authMiddleware');
+const roles = require('../middleware/roleMiddleware');
+const validate = require('../middleware/validateRequest');
+const validators = require('../validators/authValidators');
+router.post('/register', validators.register, validate, register);
+router.post('/login', validators.login, validate, login);
+router.get('/me', auth, me);
+router.put('/profile', auth, roles('passenger', 'employee', 'admin'), profile);
+router.post('/saved-passengers', auth, roles('passenger'), savedPassengers);
+router.delete('/saved-passengers/:id', auth, roles('passenger'), removeSavedPassenger);
+router.get('/employees', auth, roles('admin'), listEmployees);
+router.put('/employees/:id', auth, roles('admin'), updateEmployee);
+router.get('/users', auth, roles('admin'), listUsers);
+router.put('/users/:id/toggle-blocked', auth, roles('admin'), toggleBlocked);
+module.exports = router;
