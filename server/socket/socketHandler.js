@@ -23,7 +23,7 @@ function configureSocket(httpServer) {
       origin: (origin, callback) => {
         const allowed = getAllowedOrigins();
 
-        if (!origin || allowed.includes(origin) || /https:\/\/.*\.vercel\.app/i.test(origin)) {
+        if (!origin || allowed.includes(origin) || /https:\/\/.*\.(vercel\.app|netlify\.app|netlify\.com|github\.dev)/i.test(origin)) {
           callback(null, true);
           return;
         }

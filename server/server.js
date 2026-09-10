@@ -39,7 +39,7 @@ const isAllowedOrigin = (origin) => {
     return true;
   }
 
-  return /https:\/\/.*\.vercel\.app/i.test(origin);
+  return /https:\/\/.*\.(vercel\.app|netlify\.app|netlify\.com|github\.dev)/i.test(origin);
 };
 
 // Connect to Database
@@ -86,8 +86,8 @@ app.use('/api/food', foodRoutes);
 app.use(notFound);
 app.use(errorHandler);
 
-const PORT = process.env.PORT || 5000;
+const PORT = Number(process.env.PORT) || 5000;
 
-httpServer.listen(PORT, () => {
+httpServer.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on port ${PORT}`);
 });
