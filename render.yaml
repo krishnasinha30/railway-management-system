@@ -1,0 +1,7 @@
+services:
+  - type: web
+    name: railway-management-server
+    env: docker
+    dockerfilePath: Dockerfile
+    dockerContext: .
+    healthCheckPath: /api/health
