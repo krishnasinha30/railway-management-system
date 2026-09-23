@@ -15,8 +15,22 @@ import useAuth from "../hooks/useAuth";
 import useSocket from "../hooks/useSocket";
 import { Portal } from "./TrainSearchPage";
 
-const createCaptcha = () =>
-  Math.random().toString(36).slice(2, 8).toUpperCase();
+const CAPTCHA_CHARS = "234679ACDEFGHJKMNPQRTVWXYZ";
+const createCaptcha = () => {
+  let result = "";
+  for (let i = 0; i < 6; i++) {
+    result += CAPTCHA_CHARS.charAt(Math.floor(Math.random() * CAPTCHA_CHARS.length));
+  }
+  return result;
+};
+
+const normalizeCaptcha = (str = "") =>
+  String(str)
+    .trim()
+    .toUpperCase()
+    .replace(/0/g, "O")
+    .replace(/[1L]/g, "I");
+
 const formatDate = (date) => date.toISOString().slice(0, 10);
 
 export default function TrainDetailsPage() {
@@ -114,7 +128,7 @@ export default function TrainDetailsPage() {
       return setMessage(
         "This train has already departed today. Choose a future journey date.",
       );
-    if (form.captchaAnswer.toUpperCase() !== captcha)
+    if (normalizeCaptcha(form.captchaAnswer) !== normalizeCaptcha(captcha))
       return setMessage("Captcha is incorrect. Refresh it and try again.");
     try {
       const response = await api.post("/bookings", {
