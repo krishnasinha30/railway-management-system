@@ -1,0 +1,23 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root { --brand-dark: #1C0825; --brand-deep: #2B0A38; --brand-primary: #6F1D86; --brand-purple: #902DAA; --brand-light-purple: #C15AD4; --brand-soft: #F7F0F8; --brand-white: #FFFFFF; --success: #16A34A; --warning: #F59E0B; --danger: #DC2626; --text-dark: #24152A; --text-muted: #6B6470; font-family: 'DM Sans', sans-serif; color: var(--text-dark); background: var(--brand-soft); font-synthesis: none; }
+html { scroll-behavior: smooth; }
+body { margin: 0; min-width: 320px; }
+button, a { -webkit-tap-highlight-color: transparent; }
+.field { width: 100%; border: 1px solid rgba(36, 16, 47, .12); border-radius: 1rem; background: #fff; padding: .85rem 1rem; color: #24102f; outline: none; transition: border-color .2s, box-shadow .2s; }
+.field:focus { border-color: #9d2fb7; box-shadow: 0 0 0 4px rgba(157, 47, 183, .1); }
+.rail-lines { position: absolute; inset: 0; opacity: .32; background: linear-gradient(118deg, transparent 0 52%, rgba(255,255,255,.12) 52.1% 52.3%, transparent 52.4% 59%, rgba(255,255,255,.09) 59.1% 59.3%, transparent 59.4%), linear-gradient(118deg, transparent 0 62%, rgba(255,255,255,.08) 62.1% 62.3%, transparent 62.4%); }
+.rail-lines::after { content: ''; position: absolute; inset: 0; background-image: radial-gradient(rgba(255,255,255,.35) 1px, transparent 1px); background-size: 32px 32px; mask-image: linear-gradient(to bottom, rgba(0,0,0,.4), transparent 75%); }
+.hero-journey { background-image: url('/images/vasco-da-gama-to-londa.jpg'); background-position: center 48%; background-size: cover; animation: hero-drift 18s ease-in-out infinite alternate; }
+.hero-vignette { position: absolute; inset: 0; background: linear-gradient(90deg, rgba(28, 8, 37, .96) 0%, rgba(43, 10, 56, .68) 48%, rgba(28, 8, 37, .2) 100%), linear-gradient(0deg, rgba(28, 8, 37, .7), transparent 45%, rgba(28, 8, 37, .25)); }
+.field-label { display: block; margin: 0 0 .45rem .15rem; font-size: .68rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: #6B6470; }
+.field-icon { position: absolute; left: .85rem; top: 2.25rem; color: #6F1D86; pointer-events: none; }
+.icon-button { display: grid; min-height: 50px; min-width: 50px; place-items: center; border: 1px solid rgba(111,29,134,.15); border-radius: 1rem; color: #6F1D86; transition: .2s ease; }
+.icon-button:hover { background: #F7F0F8; transform: rotate(180deg); }
+.eyebrow { font-size: .7rem; font-weight: 800; letter-spacing: .2em; text-transform: uppercase; color: #902DAA; }
+.section-title { margin-top: .75rem; max-width: 34rem; font-family: Georgia, serif; font-size: clamp(2.2rem, 5vw, 4rem); line-height: 1.02; letter-spacing: -.02em; }
+@keyframes hero-drift { from { background-position: center 48%; } to { background-position: center 53%; } }
+@media (prefers-reduced-motion: reduce) { .hero-journey { animation: none; } }

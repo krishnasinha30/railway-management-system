@@ -1,0 +1,6 @@
+import { createAsyncThunk, createSlice } from '@reduxjs/toolkit'
+import api from '../../api/axiosInstance'
+export const fetchMyTasks = createAsyncThunk('tasks/mine', async (_, { rejectWithValue }) => { try { return (await api.get('/tasks/my-tasks')).data.data } catch (error) { return rejectWithValue(error.response?.data?.message || 'Unable to load tasks') } })
+export const updateTaskStatus = createAsyncThunk('tasks/update', async ({ id, status }, { rejectWithValue }) => { try { return (await api.put(`/tasks/${id}`, { status })).data.data } catch (error) { return rejectWithValue(error.response?.data?.message || 'Unable to update task') } })
+const slice = createSlice({ name: 'tasks', initialState: { items: [], loading: false, error: null }, reducers: {}, extraReducers: builder => builder.addCase(fetchMyTasks.pending, state => { state.loading = true }).addCase(fetchMyTasks.fulfilled, (state, action) => { state.loading = false; state.items = action.payload }).addCase(fetchMyTasks.rejected, (state, action) => { state.loading = false; state.error = action.payload }).addCase(updateTaskStatus.fulfilled, (state, action) => { state.items = state.items.map(item => item._id === action.payload._id ? action.payload : item) }) })
+export default slice.reducer
