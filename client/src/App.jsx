@@ -247,7 +247,7 @@ function SearchPanel({ stations }) {
               <option value="">Select origin</option>
               {safeStations.map((station) => (
                 <option value={station._id} key={station._id}>
-                  {station.stationCode} · {station.city}
+                  {station.name} ({station.stationCode}) · {station.city}
                 </option>
               ))}
             </select>
@@ -263,7 +263,7 @@ function SearchPanel({ stations }) {
               <option value="">Select destination</option>
               {safeStations.map((station) => (
                 <option value={station._id} key={station._id}>
-                  {station.stationCode} · {station.city}
+                  {station.name} ({station.stationCode}) · {station.city}
                 </option>
               ))}
             </select>
