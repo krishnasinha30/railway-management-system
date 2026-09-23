@@ -1,4 +1,18 @@
 import axios from 'axios'
-const api = axios.create({ baseURL: import.meta.env.VITE_API_URL || '/api' })
-api.interceptors.request.use((config) => { const token = localStorage.getItem('rms_token'); if (token) config.headers.Authorization = `Bearer ${token}`; return config })
+
+const getBaseUrl = () => {
+  const envUrl = import.meta.env.VITE_API_URL
+  if (!envUrl) return '/api'
+  const trimmed = envUrl.replace(/\/+$/, '')
+  return trimmed.endsWith('/api') ? trimmed : `${trimmed}/api`
+}
+
+const api = axios.create({ baseURL: getBaseUrl() })
+
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('rms_token')
+  if (token) config.headers.Authorization = `Bearer ${token}`
+  return config
+})
+
 export default api
