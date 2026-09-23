@@ -1,6 +1,38 @@
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit'
 import api from '../../api/axiosInstance'
-export const createBooking = createAsyncThunk('bookings/create', async (values, { rejectWithValue }) => { try { return (await api.post('/bookings', values)).data.data } catch (error) { return rejectWithValue(error.response?.data?.message || 'Unable to create booking request') } })
-export const fetchMyBookings = createAsyncThunk('bookings/mine', async (_, { rejectWithValue }) => { try { return (await api.get('/bookings/my-bookings')).data.data } catch (error) { return rejectWithValue(error.response?.data?.message || 'Unable to load booking requests') } })
-const slice = createSlice({ name: 'bookings', initialState: { items: [], loading: false, error: null, latest: null }, reducers: {}, extraReducers: builder => builder.addCase(createBooking.pending, state => { state.loading = true }).addCase(createBooking.fulfilled, (state, action) => { state.loading = false; state.latest = action.payload; state.items.unshift(action.payload) }).addCase(createBooking.rejected, (state, action) => { state.loading = false; state.error = action.payload }).addCase(fetchMyBookings.fulfilled, (state, action) => { state.items = action.payload }) })
+
+export const createBooking = createAsyncThunk('bookings/create', async (values, { rejectWithValue }) => {
+  try {
+    return (await api.post('/bookings', values)).data?.data
+  } catch (error) {
+    return rejectWithValue(error.response?.data?.message || 'Unable to create booking request')
+  }
+})
+
+export const fetchMyBookings = createAsyncThunk('bookings/mine', async (_, { rejectWithValue }) => {
+  try {
+    const { data } = await api.get('/bookings/my-bookings')
+    return Array.isArray(data?.data) ? data.data : []
+  } catch (error) {
+    return rejectWithValue(error.response?.data?.message || 'Unable to load booking requests')
+  }
+})
+
+const slice = createSlice({
+  name: 'bookings',
+  initialState: { items: [], loading: false, error: null, latest: null },
+  reducers: {},
+  extraReducers: builder => builder
+    .addCase(createBooking.pending, state => { state.loading = true })
+    .addCase(createBooking.fulfilled, (state, action) => {
+      state.loading = false
+      state.latest = action.payload
+      if (action.payload) state.items.unshift(action.payload)
+    })
+    .addCase(createBooking.rejected, (state, action) => { state.loading = false; state.error = action.payload })
+    .addCase(fetchMyBookings.fulfilled, (state, action) => {
+      state.items = Array.isArray(action.payload) ? action.payload : []
+    })
+})
+
 export default slice.reducer

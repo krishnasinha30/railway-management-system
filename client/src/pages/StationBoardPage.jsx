@@ -7,8 +7,11 @@ import useSocket from '../hooks/useSocket';
 
 export default function StationBoardPage() {
   const dispatch = useDispatch();
-  const { trains } = useSelector((s) => s.trains);
-  const { items } = useSelector((s) => s.announcements);
+  const { trains = [] } = useSelector((s) => s?.trains || {});
+  const { items = [] } = useSelector((s) => s?.announcements || {});
+
+  const safeTrains = Array.isArray(trains) ? trains : [];
+  const safeItems = Array.isArray(items) ? items : [];
 
   useEffect(() => {
     dispatch(fetchTrains());
@@ -18,8 +21,6 @@ export default function StationBoardPage() {
   const refreshTrains = useCallback(() => dispatch(fetchTrains()), [dispatch]);
   const refreshAnnouncements = useCallback(() => dispatch(fetchAnnouncements()), [dispatch]);
 
-  // Socket.io listener for the station board: when a train or announcement is updated
-  // in MongoDB, the server emits a named event and this page refreshes instantly.
   useSocket({ onTrainUpdated: refreshTrains, onAnnouncementCreated: refreshAnnouncements });
 
   return (
@@ -36,7 +37,7 @@ export default function StationBoardPage() {
             <p className="mt-1 text-sm text-white/55">Live operational view</p>
           </div>
           <div className="divide-y divide-ink/10">
-            {trains.map((t) => (
+            {safeTrains.map((t) => (
               <div key={t._id} className="flex items-center justify-between gap-4 px-6 py-5">
                 <div>
                   <p className="font-bold">{t.trainNumber} · {t.trainName}</p>
@@ -55,7 +56,7 @@ export default function StationBoardPage() {
         <aside className="rounded-3xl border border-ink/10 bg-white p-6">
           <p className="font-bold">Announcements</p>
           <div className="mt-5 grid gap-5">
-            {items.map((a) => (
+            {safeItems.map((a) => (
               <article key={a._id}>
                 <p className="text-sm font-bold">{a.title}</p>
                 <p className="mt-1 text-sm leading-6 text-slate-500">{a.message}</p>

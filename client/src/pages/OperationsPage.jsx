@@ -5,12 +5,104 @@ import api from '../api/axiosInstance'
 import { Portal } from './TrainSearchPage'
 
 export default function OperationsPage({ admin = false }) {
-  const { user } = useSelector(s => s.auth)
+  const { user } = useSelector(s => s?.auth || {})
   const [trains, setTrains] = useState([])
   const [stations, setStations] = useState([])
   const [message, setMessage] = useState('')
-  useEffect(() => { Promise.all([api.get('/trains'), api.get('/stations')]).then(([trainResponse, stationResponse]) => { setTrains(trainResponse.data.data); setStations(stationResponse.data.data) }) }, [])
-  const update = async (train, values) => { try { const response = await api.put(`/trains/${train._id}`, values); setTrains(current => current.map(item => item._id === train._id ? response.data.data : item)); setMessage('Operational update saved.') } catch (error) { setMessage(error.response?.data?.message || 'Unable to update train.') } }
-  const publish = async event => { event.preventDefault(); const form = new FormData(event.currentTarget); try { await api.post('/announcements', { title: form.get('title'), message: form.get('message'), station: form.get('station'), priority: form.get('priority') }); setMessage('Announcement published.'); event.currentTarget.reset() } catch (error) { setMessage(error.response?.data?.message || 'Unable to publish announcement.') } }
-  return <Portal title={admin ? 'Train management' : 'Train operations'} eyebrow={admin ? 'Administrator tools' : user?.assignedStation?.name || 'Assigned station'}><div className="grid gap-8 lg:grid-cols-[1.4fr_.6fr]"><section className="rounded-3xl border border-ink/10 bg-white"><div className="border-b border-ink/10 px-6 py-5"><h2 className="font-bold">{admin ? 'All trains' : 'Operational schedule'}</h2><p className="mt-1 text-sm text-slate-500">{admin ? 'Manage operational data across the network.' : 'Only operational fields can be changed here.'}</p></div><div className="divide-y divide-ink/10">{trains.map(train => <div key={train._id} className="grid gap-4 px-6 py-5 md:grid-cols-[1fr_1fr_1.2fr_auto] md:items-center"><div><p className="font-bold">{train.trainNumber}</p><p className="text-sm text-slate-500">{train.trainName}</p></div><p className="text-sm text-slate-500">Platform {train.platformNumber || 'TBA'}</p><select defaultValue={train.status} onChange={e => update(train, { status: e.target.value })} className="field py-2"><option>On Time</option><option>Delayed</option><option>Arrived</option><option>Departed</option><option>Cancelled</option></select><button onClick={() => update(train, { status: 'Delayed', delayMinutes: 10, delayReason: 'Operational update' })} className="inline-flex items-center justify-center gap-2 rounded-xl bg-ink px-3 py-2 text-xs font-bold text-white"><Save size={14} /> Save</button></div>)}</div></section><form onSubmit={publish} className="rounded-3xl bg-ink p-6 text-white"><Megaphone className="text-flare" /><h2 className="mt-5 font-display text-3xl">New announcement</h2><div className="mt-6 grid gap-3"><input required name="title" className="field" placeholder="Title" /><textarea required name="message" className="field min-h-28" placeholder="Passenger-facing message" /><select required name="station" className="field"><option value="">Station</option>{stations.map(station => <option key={station._id} value={station._id}>{station.stationCode}</option>)}</select><select name="priority" className="field"><option>low</option><option>medium</option><option>high</option></select></div><button className="mt-4 w-full rounded-2xl bg-flare px-5 py-3 font-bold">Publish</button>{message && <p className="mt-4 text-sm text-white/70">{message}</p>}</form></div></Portal>
+
+  const safeTrains = Array.isArray(trains) ? trains : []
+  const safeStations = Array.isArray(stations) ? stations : []
+
+  useEffect(() => {
+    Promise.all([api.get('/trains'), api.get('/stations')])
+      .then(([trainResponse, stationResponse]) => {
+        setTrains(Array.isArray(trainResponse?.data?.data) ? trainResponse.data.data : [])
+        setStations(Array.isArray(stationResponse?.data?.data) ? stationResponse.data.data : [])
+      })
+      .catch(() => {})
+  }, [])
+
+  const update = async (train, values) => {
+    try {
+      const response = await api.put(`/trains/${train._id}`, values)
+      if (response?.data?.data) {
+        setTrains(current => (Array.isArray(current) ? current : []).map(item => item._id === train._id ? response.data.data : item))
+      }
+      setMessage('Operational update saved.')
+    } catch (error) {
+      setMessage(error.response?.data?.message || 'Unable to update train.')
+    }
+  }
+
+  const publish = async event => {
+    event.preventDefault()
+    const form = new FormData(event.currentTarget)
+    try {
+      await api.post('/announcements', {
+        title: form.get('title'),
+        message: form.get('message'),
+        station: form.get('station'),
+        priority: form.get('priority')
+      })
+      setMessage('Announcement published.')
+      event.currentTarget.reset()
+    } catch (error) {
+      setMessage(error.response?.data?.message || 'Unable to publish announcement.')
+    }
+  }
+
+  return (
+    <Portal title={admin ? 'Train management' : 'Train operations'} eyebrow={admin ? 'Administrator tools' : user?.assignedStation?.name || 'Assigned station'}>
+      <div className="grid gap-8 lg:grid-cols-[1.4fr_.6fr]">
+        <section className="rounded-3xl border border-ink/10 bg-white">
+          <div className="border-b border-ink/10 px-6 py-5">
+            <h2 className="font-bold">{admin ? 'All trains' : 'Operational schedule'}</h2>
+            <p className="mt-1 text-sm text-slate-500">{admin ? 'Manage operational data across the network.' : 'Only operational fields can be changed here.'}</p>
+          </div>
+          <div className="divide-y divide-ink/10">
+            {safeTrains.map(train => (
+              <div key={train._id} className="grid gap-4 px-6 py-5 md:grid-cols-[1fr_1fr_1.2fr_auto] md:items-center">
+                <div>
+                  <p className="font-bold">{train.trainNumber}</p>
+                  <p className="text-sm text-slate-500">{train.trainName}</p>
+                </div>
+                <p className="text-sm text-slate-500">Platform {train.platformNumber || 'TBA'}</p>
+                <select defaultValue={train.status} onChange={e => update(train, { status: e.target.value })} className="field py-2">
+                  <option>On Time</option>
+                  <option>Delayed</option>
+                  <option>Arrived</option>
+                  <option>Departed</option>
+                  <option>Cancelled</option>
+                </select>
+                <button onClick={() => update(train, { status: 'Delayed', delayMinutes: 10, delayReason: 'Operational update' })} className="inline-flex items-center justify-center gap-2 rounded-xl bg-ink px-3 py-2 text-xs font-bold text-white">
+                  <Save size={14} /> Save
+                </button>
+              </div>
+            ))}
+          </div>
+        </section>
+        <form onSubmit={publish} className="rounded-3xl bg-ink p-6 text-white">
+          <Megaphone className="text-flare" />
+          <h2 className="mt-5 font-display text-3xl">New announcement</h2>
+          <div className="mt-6 grid gap-3">
+            <input required name="title" className="field" placeholder="Title" />
+            <textarea required name="message" className="field min-h-28" placeholder="Passenger-facing message" />
+            <select required name="station" className="field">
+              <option value="">Station</option>
+              {safeStations.map(station => (
+                <option key={station._id} value={station._id}>{station.stationCode}</option>
+              ))}
+            </select>
+            <select name="priority" className="field">
+              <option>low</option>
+              <option>medium</option>
+              <option>high</option>
+            </select>
+          </div>
+          <button className="mt-4 w-full rounded-2xl bg-flare px-5 py-3 font-bold">Publish</button>
+          {message && <p className="mt-4 text-sm text-white/70">{message}</p>}
+        </form>
+      </div>
+    </Portal>
+  )
 }

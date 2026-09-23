@@ -197,6 +197,7 @@ function Navbar() {
 }
 
 function SearchPanel({ stations }) {
+  const safeStations = Array.isArray(stations) ? stations : [];
   const navigate = useNavigate();
   const [form, setForm] = useState({
     from: "",
@@ -244,7 +245,7 @@ function SearchPanel({ stations }) {
               className="field pl-10"
             >
               <option value="">Select origin</option>
-              {stations.map((station) => (
+              {safeStations.map((station) => (
                 <option value={station._id} key={station._id}>
                   {station.stationCode} · {station.city}
                 </option>
@@ -260,7 +261,7 @@ function SearchPanel({ stations }) {
               className="field pl-10"
             >
               <option value="">Select destination</option>
-              {stations.map((station) => (
+              {safeStations.map((station) => (
                 <option value={station._id} key={station._id}>
                   {station.stationCode} · {station.city}
                 </option>
@@ -354,9 +355,9 @@ function HomePage() {
       api.get("/dashboard/overview"),
     ])
       .then(([stationResponse, trainResponse, overviewResponse]) => {
-        setStations(stationResponse.data.data);
-        setTrains(trainResponse.data.data);
-        setOverview(overviewResponse.data.data);
+        setStations(Array.isArray(stationResponse?.data?.data) ? stationResponse.data.data : []);
+        setTrains(Array.isArray(trainResponse?.data?.data) ? trainResponse.data.data : []);
+        setOverview(overviewResponse?.data?.data || {});
       })
       .catch(() => {});
   }, []);
@@ -368,12 +369,13 @@ function HomePage() {
     "Tejas",
     "Express",
   ];
+  const safeOverview = overview || {};
   const stats = [
-    ["Trains managed", overview.trains, TrainFront],
-    ["Stations connected", overview.stations, MapPin],
-    ["Registered passengers", overview.passengers, ShieldCheck],
-    ["Active bookings", overview.activeBookings, Ticket],
-    ["Food delivered", overview.deliveredFood, Utensils],
+    ["Trains managed", safeOverview.trains ?? 0, TrainFront],
+    ["Stations connected", safeOverview.stations ?? 0, MapPin],
+    ["Registered passengers", safeOverview.passengers ?? 0, ShieldCheck],
+    ["Active bookings", safeOverview.activeBookings ?? 0, Ticket],
+    ["Food delivered", safeOverview.deliveredFood ?? 0, Utensils],
   ];
   return (
     <div className="min-h-screen bg-lavender-50 text-ink">
@@ -466,8 +468,8 @@ function HomePage() {
             </div>
             <div className="grid gap-4 sm:grid-cols-3">
               {categories.map((category, index) => {
-                const count = trains.filter(
-                  (train) => train.category === category,
+                const count = (Array.isArray(trains) ? trains : []).filter(
+                  (train) => train?.category === category,
                 ).length;
                 return (
                   <motion.div

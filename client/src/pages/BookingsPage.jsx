@@ -8,7 +8,8 @@ import useSocket from "../hooks/useSocket";
 
 export default function BookingsPage() {
   const dispatch = useDispatch();
-  const { items, loading } = useSelector((state) => state.bookings);
+  const { items = [], loading = false } = useSelector((state) => state?.bookings || {});
+  const safeItems = Array.isArray(items) ? items : [];
   const [query, setQuery] = useState("");
   const [message, setMessage] = useState("");
   const refresh = useCallback(() => dispatch(fetchMyBookings()), [dispatch]);
@@ -25,10 +26,10 @@ export default function BookingsPage() {
       setMessage(error.response?.data?.message || "Unable to cancel booking.");
     }
   };
-  const visible = items.filter(
+  const visible = safeItems.filter(
     (item) =>
       !query ||
-      `${item.bookingReference} ${item.pnrNumber} ${item.train?.trainName}`
+      `${item?.bookingReference || ''} ${item?.pnrNumber || ''} ${item?.train?.trainName || ''}`
         .toLowerCase()
         .includes(query.toLowerCase()),
   );
