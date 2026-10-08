@@ -183,6 +183,8 @@ Successful real delivery responds with `{ "success": true, "messageId": "..." }`
 
 The app uses Socket.IO over WebSocket (with its normal transport fallback) for live updates. Authenticated connections present the existing JWT; the server validates it and joins that connection to a private per-user room. Wallet, booking, food-order, and personal notifications are delivered only to their owner's room; public train and station-board feeds remain shared.
 
+Optional frontend build variables `VITE_SUPPORT_EMAIL` and `VITE_SUPPORT_PHONE` add your real help contacts to downloaded ticket PDFs. Set these on the frontend host and rebuild/redeploy; if left blank the PDF directs the traveler to the ticket-issuing administrator instead of showing placeholder contact details.
+
 The notification bell in the application header shows live pop-up alerts and a persistent inbox. Notifications are stored in MongoDB and can be listed with `GET /api/notifications/mine`, marked read with `PUT /api/notifications/:id/read`, or cleared as unread with `PUT /api/notifications/read-all` (all require a bearer token). Supported alerts include:
 
 - Booking created, canceled, and admin-updated status; booking confirmation/cancellation emails continue to be sent.
