@@ -4,10 +4,33 @@ const Train = require('../models/Train');
 const User = require('../models/User');
 const wallet = require('./walletController');
 const { success, failure } = require('../utils/apiResponse');
+const { sendBookingConfirmationEmail, sendBookingCancellationEmail } = require('../services/emailService');
 
 const reference = () => `RMS-${new Date().getFullYear()}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
 const pnr = () => String(Math.floor(1000000000 + Math.random() * 9000000000));
 const journeyDay = value => { const [year, month, day] = String(value).slice(0, 10).split('-').map(Number); return new Date(year, month - 1, day); };
+const queueBookingEmail = (sender, booking, fallbackUser) => {
+  setImmediate(async () => {
+    try {
+      await booking.populate('train boardingStation destinationStation passenger');
+      const passenger = booking.passenger || fallbackUser;
+      if (!passenger?.email) throw new Error(`Booking ${booking.bookingReference} has no passenger email address`);
+      const pickup = booking.boardingStation;
+      const result = await sender({
+        email: passenger.email,
+        userName: passenger.name,
+        referenceId: booking.bookingReference,
+        trainName: booking.train?.trainName,
+        journeyDate: booking.journeyDate,
+        pickupLocation: pickup?.name || pickup?.stationCode || 'Not provided',
+        totalAmount: booking.totalFare
+      });
+      console.info(`[email] ${result.provider} delivery ${result.messageId} for booking ${booking.bookingReference}`);
+    } catch (error) {
+      console.error(`[email] Could not send booking email for ${booking.bookingReference}: ${error.message}`);
+    }
+  });
+};
 
 const normalizeCaptcha = (str = '') =>
   String(str)
@@ -95,6 +118,7 @@ exports.create = async (req, res, next) => {
 
     req.app.get('io').emit('bookingUpdated', booking);
     success(res, booking, 'Booking created', 201);
+    queueBookingEmail(sendBookingConfirmationEmail, booking, req.user);
   } catch (e) { next(e); }
 };
 
@@ -124,9 +148,15 @@ exports.list = async (req, res, next) => {
 
 exports.update = async (req, res, next) => {
   try {
-    const booking = await Booking.findByIdAndUpdate(req.params.id, { bookingStatus: req.body.bookingStatus }, { new: true });
+    const booking = await Booking.findById(req.params.id);
     if (!booking) return failure(res, 'Booking not found', [], 404);
+    const previousStatus = booking.bookingStatus;
+    booking.bookingStatus = req.body.bookingStatus;
+    await booking.save();
     success(res, booking, 'Booking updated');
+    if (previousStatus !== 'Cancelled' && booking.bookingStatus === 'Cancelled') {
+      queueBookingEmail(sendBookingCancellationEmail, booking);
+    }
   } catch (e) { next(e); }
 };
 
@@ -157,6 +187,7 @@ exports.cancel = async (req, res, next) => {
 
     req.app.get('io').emit('bookingUpdated', booking);
     success(res, booking, 'Demo booking cancelled and refund processed');
+    queueBookingEmail(sendBookingCancellationEmail, booking, req.user);
   } catch (e) { next(e); }
 };
 

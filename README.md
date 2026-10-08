@@ -148,3 +148,33 @@ GitHub Actions runs on every push and pull request. It installs the frontend dep
 This is an academic demonstration. Booking, wallet payments, PNR status, food delivery, train locations, and operational updates are simulated; the system does not connect to IRCTC, real payment providers, or GPS services.
 
 The current implementation includes Socket.io updates for train status, announcements, bookings, food orders, and wallet changes; Docker Compose for MongoDB, API, and frontend; GitHub Actions validation; and role-protected passenger, employee, and admin screens.
+
+## Booking Email Notifications
+
+The backend queues branded booking-confirmation and cancellation emails after successful booking actions. Email delivery runs asynchronously so a slow email provider does not delay the booking response.
+
+### Configure a provider
+
+Copy the email settings into `server/.env` (or configure them as backend environment variables). `RESEND_API_KEY` is preferred. If Resend is not configured, complete SMTP settings are used; if neither provider is configured, the service logs a mock delivery instead of failing a booking.
+
+```env
+RESEND_API_KEY=re_...
+SMTP_HOST=
+SMTP_PORT=587
+SMTP_USER=
+SMTP_PASS=
+SMTP_FROM=Rail Center <onboarding@resend.dev>
+```
+
+For the quick setup, open [resend.com](https://resend.com), choose **Continue with Google**, open **API Keys**, and create/copy a key (typically a 30-second setup, with no credit card needed to start on the free plan). Resend's free-plan limits and account verification requirements can change. For production sending, verify a domain in Resend and use a sender address on that domain as `SMTP_FROM`; the default Resend onboarding sender is intended for initial testing.
+
+For local SMTP, use your provider's SMTP host and credentials. With Gmail, enable 2-Step Verification and create an App Password; use `smtp.gmail.com`, port `587`, your Gmail address as `SMTP_USER`, the App Password as `SMTP_PASS`, and a matching sender address for `SMTP_FROM`. Never commit real API keys or SMTP credentials.
+
+### Deploy and verify
+
+1. In Render, open the backend service, go to **Environment**, add `RESEND_API_KEY` and `SMTP_FROM` (or the SMTP settings), then save and redeploy. Do not put these secrets in the Vercel frontend.
+2. In Vercel, only the frontend's existing `VITE_API_URL` and `VITE_SOCKET_URL` are needed; mail credentials must remain on the backend.
+3. Sign in to the application as an administrator, open **Admin management → Email test**, and send a test message to an inbox you can access. The panel reports the provider message ID or the delivery error.
+4. Confirm the message appears in the inbox (and check spam/promotions folders). The endpoint is `POST /api/tests/send-test-email`, accepts `{ "email": "user@example.com" }`, and requires an administrator bearer token.
+
+Successful real delivery responds with `{ "success": true, "messageId": "..." }`; delivery errors return `{ "success": false, "error": "..." }`. In simulation mode a mock message ID is returned and the backend logs the simulated send.

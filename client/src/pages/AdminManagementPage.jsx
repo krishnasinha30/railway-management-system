@@ -1,15 +1,18 @@
 import { useEffect, useState } from 'react'
-import { Building2, ClipboardList, Megaphone, Plus, Trash2, Users } from 'lucide-react'
+import { Building2, ClipboardList, Mail, Megaphone, Plus, Send, Trash2, Users } from 'lucide-react'
 import api from '../api/axiosInstance'
 import { Portal } from './TrainSearchPage'
 
-const tabs = [['stations', 'Stations', Building2], ['employees', 'Employees', Users], ['announcements', 'Announcements', Megaphone], ['bookings', 'Bookings', ClipboardList]]
+const tabs = [['stations', 'Stations', Building2], ['employees', 'Employees', Users], ['announcements', 'Announcements', Megaphone], ['bookings', 'Bookings', ClipboardList], ['email', 'Email test', Mail]]
 
 export default function AdminManagementPage() {
   const [tab, setTab] = useState('stations')
   const [data, setData] = useState({ stations: [], employees: [], announcements: [], bookings: [] })
   const [message, setMessage] = useState('')
   const [form, setForm] = useState({ name: '', stationCode: '', city: '', totalPlatforms: 4 })
+  const [testEmail, setTestEmail] = useState('')
+  const [sendingTestEmail, setSendingTestEmail] = useState(false)
+  const [testEmailResult, setTestEmailResult] = useState(null)
 
   const load = async () => {
     const [stations, employees, announcements, bookings] = await Promise.all([
@@ -55,6 +58,20 @@ export default function AdminManagementPage() {
     await api.put(`/bookings/${booking._id}`, { bookingStatus })
     setMessage('Booking status updated.')
     load()
+  }
+
+  const sendTestEmail = async event => {
+    event.preventDefault()
+    setSendingTestEmail(true)
+    setTestEmailResult(null)
+    try {
+      const response = await api.post('/tests/send-test-email', { email: testEmail })
+      setTestEmailResult({ success: true, messageId: response.data.messageId })
+    } catch (error) {
+      setTestEmailResult({ success: false, error: error.response?.data?.error || error.response?.data?.message || 'Unable to send the test email.' })
+    } finally {
+      setSendingTestEmail(false)
+    }
   }
 
   const safeStations = Array.isArray(data.stations) ? data.stations : []
@@ -159,6 +176,30 @@ export default function AdminManagementPage() {
               ))}
             </div>
           </>
+        )}
+        {tab === 'email' && (
+          <div className="max-w-xl">
+            <h2 className="font-bold">Verify email delivery</h2>
+            <p className="mt-2 text-sm leading-6 text-slate-500">Send a branded sample email using the server's active delivery provider. This diagnostic is available to administrators only.</p>
+            <form onSubmit={sendTestEmail} className="mt-6 flex flex-col gap-3 sm:flex-row">
+              <input
+                required
+                type="email"
+                className="field flex-1"
+                placeholder="recipient@example.com"
+                value={testEmail}
+                onChange={event => setTestEmail(event.target.value)}
+              />
+              <button disabled={sendingTestEmail} className="inline-flex items-center justify-center gap-2 rounded-2xl bg-ink px-5 py-3 text-sm font-bold text-white disabled:opacity-60">
+                <Send size={16} />{sendingTestEmail ? 'Sending…' : 'Send test email'}
+              </button>
+            </form>
+            {testEmailResult && (
+              <p role="status" className={`mt-4 break-words rounded-xl px-4 py-3 text-sm ${testEmailResult.success ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}>
+                {testEmailResult.success ? `Email accepted. Message ID: ${testEmailResult.messageId}` : `Email failed: ${testEmailResult.error}`}
+              </p>
+            )}
+          </div>
         )}
       </section>
     </Portal>

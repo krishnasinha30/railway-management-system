@@ -14,6 +14,7 @@ const bookingRoutes = require('./routes/bookingRoutes');
 const dashboardRoutes = require('./routes/dashboardRoutes');
 const walletRoutes = require('./routes/walletRoutes');
 const foodRoutes = require('./routes/foodRoutes');
+const testRoutes = require('./routes/testRoutes');
 const http = require('http');
 const configureSocket = require('./socket/socketHandler');
 
@@ -83,6 +84,7 @@ app.use('/api/bookings', bookingRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/wallet', walletRoutes);
 app.use('/api/food', foodRoutes);
+app.use('/api/tests', testRoutes);
 app.use(notFound);
 app.use(errorHandler);
 
