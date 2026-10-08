@@ -1,4 +1,8 @@
 const { Server } = require('socket.io');
+const jwt = require('jsonwebtoken');
+const User = require('../models/User');
+
+const JWT_SECRET = process.env.JWT_SECRET || 'railway-dev-secret';
 
 const getAllowedOrigins = () => {
   const origins = [
@@ -35,7 +39,24 @@ function configureSocket(httpServer) {
     },
   });
 
+  io.use(async (socket, next) => {
+    const token = socket.handshake.auth?.token;
+    if (!token) return next();
+
+    try {
+      const payload = jwt.verify(token, JWT_SECRET);
+      const user = await User.findById(payload.id).select('_id isBlocked');
+      if (!user || user.isBlocked) return next(new Error('Authentication required'));
+      socket.data.userId = user._id.toString();
+      next();
+    } catch (error) {
+      next(new Error('Invalid or expired socket token'));
+    }
+  });
+
   io.on('connection', socket => {
+    if (socket.data.userId) socket.join(`user:${socket.data.userId}`);
+
     // Clients join a station room so the server can emit station-specific updates.
     socket.on('joinStation', stationId => { if (stationId) socket.join(`station:${stationId}`); });
     socket.on('leaveStation', stationId => { if (stationId) socket.leave(`station:${stationId}`); });

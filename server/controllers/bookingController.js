@@ -5,29 +5,48 @@ const User = require('../models/User');
 const wallet = require('./walletController');
 const { success, failure } = require('../utils/apiResponse');
 const { sendBookingConfirmationEmail, sendBookingCancellationEmail } = require('../services/emailService');
+const { notifyUser, userRoom } = require('../services/notificationService');
 
 const reference = () => `RMS-${new Date().getFullYear()}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
 const pnr = () => String(Math.floor(1000000000 + Math.random() * 9000000000));
 const journeyDay = value => { const [year, month, day] = String(value).slice(0, 10).split('-').map(Number); return new Date(year, month - 1, day); };
-const queueBookingEmail = (sender, booking, fallbackUser) => {
+const queueBookingUpdate = (io, booking, { title, message }, emailSender, fallbackUser) => {
   setImmediate(async () => {
+    let passenger;
     try {
       await booking.populate('train boardingStation destinationStation passenger');
-      const passenger = booking.passenger || fallbackUser;
+      passenger = booking.passenger || fallbackUser;
       if (!passenger?.email) throw new Error(`Booking ${booking.bookingReference} has no passenger email address`);
-      const pickup = booking.boardingStation;
-      const result = await sender({
-        email: passenger.email,
-        userName: passenger.name,
-        referenceId: booking.bookingReference,
-        trainName: booking.train?.trainName,
-        journeyDate: booking.journeyDate,
-        pickupLocation: pickup?.name || pickup?.stationCode || 'Not provided',
-        totalAmount: booking.totalFare
+      io.to(userRoom(passenger._id)).emit('bookingUpdated', booking);
+      await notifyUser(io, passenger._id, {
+        type: 'booking',
+        title,
+        message,
+        metadata: {
+          bookingId: booking._id,
+          referenceId: booking.bookingReference,
+          bookingStatus: booking.bookingStatus
+        }
       });
-      console.info(`[email] ${result.provider} delivery ${result.messageId} for booking ${booking.bookingReference}`);
     } catch (error) {
-      console.error(`[email] Could not send booking email for ${booking.bookingReference}: ${error.message}`);
+      console.error(`[notification] Could not publish booking update for ${booking.bookingReference}: ${error.message}`);
+    }
+
+    if (emailSender && passenger?.email) {
+      try {
+        const result = await emailSender({
+          email: passenger.email,
+          userName: passenger.name,
+          referenceId: booking.bookingReference,
+          trainName: booking.train?.trainName,
+          journeyDate: booking.journeyDate,
+          pickupLocation: booking.boardingStation?.name || booking.boardingStation?.stationCode || 'Not provided',
+          totalAmount: booking.totalFare
+        });
+        console.info(`[email] ${result.provider} delivery ${result.messageId} for booking ${booking.bookingReference}`);
+      } catch (error) {
+        console.error(`[email] Could not send booking email for ${booking.bookingReference}: ${error.message}`);
+      }
     }
   });
 };
@@ -99,6 +118,7 @@ exports.create = async (req, res, next) => {
 
     if (walletAmountPaid > 0) {
       await wallet.apply({
+        io: req.app.get('io'),
         userId: req.user._id,
         type: 'Debit',
         amount: walletAmountPaid,
@@ -116,9 +136,14 @@ exports.create = async (req, res, next) => {
       );
     }
 
-    req.app.get('io').emit('bookingUpdated', booking);
     success(res, booking, 'Booking created', 201);
-    queueBookingEmail(sendBookingConfirmationEmail, booking, req.user);
+    queueBookingUpdate(
+      req.app.get('io'),
+      booking,
+      { title: 'Booking received', message: `Your booking ${booking.bookingReference} has been ${booking.bookingStatus.toLowerCase()}.` },
+      sendBookingConfirmationEmail,
+      req.user
+    );
   } catch (e) { next(e); }
 };
 
@@ -154,8 +179,19 @@ exports.update = async (req, res, next) => {
     booking.bookingStatus = req.body.bookingStatus;
     await booking.save();
     success(res, booking, 'Booking updated');
-    if (previousStatus !== 'Cancelled' && booking.bookingStatus === 'Cancelled') {
-      queueBookingEmail(sendBookingCancellationEmail, booking);
+    if (previousStatus !== booking.bookingStatus) {
+      const canceled = booking.bookingStatus === 'Cancelled';
+      queueBookingUpdate(
+        req.app.get('io'),
+        booking,
+        {
+          title: canceled ? 'Booking canceled' : 'Booking status updated',
+          message: canceled
+            ? `Your booking ${booking.bookingReference} was canceled by the administrator.`
+            : `Your booking ${booking.bookingReference} status is now ${booking.bookingStatus}.`
+        },
+        canceled ? sendBookingCancellationEmail : null
+      );
     }
   } catch (e) { next(e); }
 };
@@ -171,6 +207,7 @@ exports.cancel = async (req, res, next) => {
 
     if (wasPaid) {
       await wallet.apply({
+        io: req.app.get('io'),
         userId: req.user._id,
         type: 'Refund',
         amount: booking.totalFare,
@@ -185,9 +222,14 @@ exports.cancel = async (req, res, next) => {
       );
     }
 
-    req.app.get('io').emit('bookingUpdated', booking);
     success(res, booking, 'Demo booking cancelled and refund processed');
-    queueBookingEmail(sendBookingCancellationEmail, booking, req.user);
+    queueBookingUpdate(
+      req.app.get('io'),
+      booking,
+      { title: 'Booking canceled', message: `Your booking ${booking.bookingReference} has been canceled.` },
+      sendBookingCancellationEmail,
+      req.user
+    );
   } catch (e) { next(e); }
 };
 

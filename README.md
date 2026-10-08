@@ -178,3 +178,18 @@ For local SMTP, use your provider's SMTP host and credentials. With Gmail, enabl
 4. Confirm the message appears in the inbox (and check spam/promotions folders). The endpoint is `POST /api/tests/send-test-email`, accepts `{ "email": "user@example.com" }`, and requires an administrator bearer token.
 
 Successful real delivery responds with `{ "success": true, "messageId": "..." }`; delivery errors return `{ "success": false, "error": "..." }`. In simulation mode a mock message ID is returned and the backend logs the simulated send.
+
+## Real-Time WebSocket Notifications
+
+The app uses Socket.IO over WebSocket (with its normal transport fallback) for live updates. Authenticated connections present the existing JWT; the server validates it and joins that connection to a private per-user room. Wallet, booking, food-order, and personal notifications are delivered only to their owner's room; public train and station-board feeds remain shared.
+
+The notification bell in the application header shows live pop-up alerts and a persistent inbox. Notifications are stored in MongoDB and can be listed with `GET /api/notifications/mine`, marked read with `PUT /api/notifications/:id/read`, or cleared as unread with `PUT /api/notifications/read-all` (all require a bearer token). Supported alerts include:
+
+- Booking created, canceled, and admin-updated status; booking confirmation/cancellation emails continue to be sent.
+- Wallet credits, promo credits, admin credits, booking/food debits, withdrawals, and refunds; wallet credits/refunds also send an email.
+- Food orders placed and order status updates.
+- Employee task assignments.
+- Train cancellations and increasing delay updates for users with future bookings on that train.
+- Live train status and public station announcements.
+
+Wallet and payment actions in this project are explicitly simulated; a notification or email confirms the demo ledger change and is not proof of a real payment. Socket.IO provides immediate delivery while connected; the MongoDB inbox allows users to retrieve alerts after reconnecting. Email dispatch is best-effort and logged separately from the booking/wallet API response.

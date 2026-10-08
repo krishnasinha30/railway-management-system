@@ -95,6 +95,23 @@ const sendBookingCancellationEmail = data => deliver({
   text: `Hi ${data.userName || 'Traveler'}, your booking has been canceled. Reference: ${data.referenceId || 'Not provided'}. Train: ${data.trainName || 'Not provided'}. Journey date: ${formatDate(data.journeyDate)}. Pickup location: ${data.pickupLocation || 'Not provided'}.`
 });
 
+const sendWalletCreditEmail = data => deliver({
+  to: data.email,
+  subject: `Wallet credited · ${formatAmount(data.amount)}`,
+  html: emailLayout({
+    title: 'Wallet Credited',
+    greeting: data.userName || 'Traveler',
+    intro: 'A credit has been added to your Rail Center wallet.',
+    rows: [
+      ['Credit amount', formatAmount(data.amount)],
+      ['Reason', data.reason || 'Wallet credit'],
+      ['Updated balance', formatAmount(data.walletBalance)]
+    ],
+    accent: '#047857'
+  }),
+  text: `Hi ${data.userName || 'Traveler'}, ${formatAmount(data.amount)} was credited to your Rail Center wallet. Reason: ${data.reason || 'Wallet credit'}. Updated balance: ${formatAmount(data.walletBalance)}.`
+});
+
 const sendTestEmail = email => deliver({
   to: email,
   subject: 'Rail Center email delivery test',
@@ -186,5 +203,6 @@ async function deliver(message) {
 module.exports = {
   sendBookingConfirmationEmail,
   sendBookingCancellationEmail,
+  sendWalletCreditEmail,
   sendTestEmail
 };

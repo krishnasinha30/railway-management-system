@@ -8,11 +8,19 @@ export default function useSocket({
   onBookingUpdated,
   onFoodOrderUpdated,
   onWalletUpdated,
+  onNotification,
+  authToken = localStorage.getItem('rms_token'),
 } = {}) {
   useEffect(() => {
     // Socket.io keeps a single connection for all pages. We connect once,
     // register the listeners needed by this screen, and clean them up
     // explicitly to avoid duplicate event listeners during re-renders.
+    if (socket.authToken !== authToken) {
+      socket.authToken = authToken
+      socket.auth = authToken ? { token: authToken } : {}
+      if (socket.connected) socket.disconnect()
+    }
+
     if (!socket.connected) {
       socket.connect();
     }
@@ -31,6 +39,7 @@ export default function useSocket({
     register('bookingUpdated', onBookingUpdated);
     register('foodOrderUpdated', onFoodOrderUpdated);
     register('walletUpdated', onWalletUpdated);
+    register('notification', onNotification);
 
     return () => {
       if (stationId) socket.emit('leaveStation', stationId);
@@ -43,5 +52,5 @@ export default function useSocket({
       // other parts of the app may still be listening to live updates.
       // Reconnecting on the next mount is cheaper and avoids losing active updates.
     };
-  }, [stationId, onTrainUpdated, onAnnouncementCreated, onBookingUpdated, onFoodOrderUpdated, onWalletUpdated]);
+  }, [stationId, onTrainUpdated, onAnnouncementCreated, onBookingUpdated, onFoodOrderUpdated, onWalletUpdated, onNotification, authToken]);
 }

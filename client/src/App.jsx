@@ -41,6 +41,7 @@ import AdminUsersPage from "./pages/AdminUsersPage";
 import ProfilePage from "./pages/ProfilePage";
 import BookingConfirmationPage from "./pages/BookingConfirmationPage";
 import useAuth from "./hooks/useAuth";
+import NotificationCenter from "./components/NotificationCenter";
 
 const quickActions = [
   { icon: Search, label: "Search trains", href: "/trains" },
@@ -84,7 +85,7 @@ function Logo({ light = false }) {
 function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, user, token } = useAuth();
   const links = [
     ["Home", "/"],
     ["Find trains", "/trains"],
@@ -114,6 +115,7 @@ function Navbar() {
         <div className="hidden items-center gap-3 md:flex">
           {isAuthenticated ? (
             <>
+              <NotificationCenter isAuthenticated={isAuthenticated} authToken={token} light />
               <Link
                 to="/wallet"
                 className="rounded-full border border-white/25 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-white hover:text-ink"
@@ -163,6 +165,7 @@ function Navbar() {
         >
           {open ? <X size={20} /> : <Menu size={20} />}
         </button>
+        {isAuthenticated && <div className="md:hidden"><NotificationCenter isAuthenticated={isAuthenticated} authToken={token} light /></div>}
       </div>
       {open && (
         <nav className="mx-4 mb-4 rounded-3xl border border-white/15 bg-plum-950/95 p-5 text-sm text-white shadow-2xl backdrop-blur-xl">
