@@ -13,35 +13,59 @@ const journeyDay = value => { const [year, month, day] = String(value).slice(0, 
 const queueBookingUpdate = (io, booking, { title, message }, emailSender, fallbackUser) => {
   setImmediate(async () => {
     let passenger;
+    const passengerId = booking.passenger?._id || booking.passenger || fallbackUser?._id;
     try {
       await booking.populate('train boardingStation destinationStation passenger');
       passenger = booking.passenger || fallbackUser;
-      if (!passenger?.email) throw new Error(`Booking ${booking.bookingReference} has no passenger email address`);
-      io.to(userRoom(passenger._id)).emit('bookingUpdated', booking);
-      await notifyUser(io, passenger._id, {
-        type: 'booking',
-        title,
-        message,
-        metadata: {
-          bookingId: booking._id,
-          referenceId: booking.bookingReference,
-          bookingStatus: booking.bookingStatus
-        }
-      });
     } catch (error) {
-      console.error(`[notification] Could not publish booking update for ${booking.bookingReference}: ${error.message}`);
+      console.error(`[booking] Could not load details for ${booking.bookingReference}: ${error.message}`);
+    }
+
+    if (!passenger?.email && passengerId) {
+      try {
+        passenger = await User.findById(passengerId) || passenger;
+      } catch (error) {
+        console.error(`[email] Could not load passenger for booking ${booking.bookingReference}: ${error.message}`);
+      }
+    }
+    if (!passenger?.email && fallbackUser?.email && String(fallbackUser._id) === String(passengerId)) {
+      passenger = fallbackUser;
+    }
+
+    if (io && passengerId) {
+      try {
+        io.to(userRoom(passengerId)).emit('bookingUpdated', booking);
+        await notifyUser(io, passengerId, {
+          type: 'booking',
+          title,
+          message,
+          metadata: {
+            bookingId: booking._id,
+            referenceId: booking.bookingReference,
+            bookingStatus: booking.bookingStatus
+          }
+        });
+      } catch (error) {
+        console.error(`[notification] Could not publish booking update for ${booking.bookingReference}: ${error.message}`);
+      }
     }
 
     if (emailSender && passenger?.email) {
       try {
         const result = await emailSender({
           email: passenger.email,
-          userName: passenger.name,
+          userName: passenger.name || 'Traveler',
+          passengerName: passenger.name || 'Traveler',
           referenceId: booking.bookingReference,
-          trainName: booking.train?.trainName,
+          bookingReference: booking.bookingReference,
+          trainName: booking.train?.trainName || 'Express Train',
+          vehicleName: booking.train?.trainName || 'Express Train',
+          itemName: booking.train?.trainName || 'Express Train',
           journeyDate: booking.journeyDate,
-          pickupLocation: booking.boardingStation?.name || booking.boardingStation?.stationCode || 'Not provided',
-          totalAmount: booking.totalFare
+          pickupLocation: booking.boardingStation?.name || booking.boardingStation?.stationCode || 'Boarding Station',
+          boardingStation: booking.boardingStation?.name || booking.boardingStation?.stationCode || 'Boarding Station',
+          totalAmount: booking.totalFare,
+          totalFare: booking.totalFare
         });
         console.info(`[email] ${result.provider} delivery ${result.messageId} for booking ${booking.bookingReference}`);
       } catch (error) {
@@ -181,6 +205,9 @@ exports.update = async (req, res, next) => {
     success(res, booking, 'Booking updated');
     if (previousStatus !== booking.bookingStatus) {
       const canceled = booking.bookingStatus === 'Cancelled';
+      const confirmed = booking.bookingStatus === 'Confirmed';
+      const emailSender = canceled ? sendBookingCancellationEmail : (confirmed ? sendBookingConfirmationEmail : null);
+
       queueBookingUpdate(
         req.app.get('io'),
         booking,
@@ -190,7 +217,8 @@ exports.update = async (req, res, next) => {
             ? `Your booking ${booking.bookingReference} was canceled by the administrator.`
             : `Your booking ${booking.bookingReference} status is now ${booking.bookingStatus}.`
         },
-        canceled ? sendBookingCancellationEmail : null
+        emailSender,
+        req.user
       );
     }
   } catch (e) { next(e); }

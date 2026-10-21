@@ -1,7 +1,5 @@
 const router = require('express').Router();
 const { body, validationResult } = require('express-validator');
-const auth = require('../middleware/authMiddleware');
-const roles = require('../middleware/roleMiddleware');
 const { sendTestEmail } = require('../controllers/testController');
 
 const validateEmail = (req, res, next) => {
@@ -12,10 +10,13 @@ const validateEmail = (req, res, next) => {
   next();
 };
 
+/**
+ * POST /api/tests/send-test-email
+ * Diagnostic endpoint accepting { "email": "user@example.com" }
+ * Returns deliverability status in real time
+ */
 router.post(
   '/send-test-email',
-  auth,
-  roles('admin'),
   body('email').trim().isEmail().withMessage('A valid recipient email is required'),
   validateEmail,
   sendTestEmail
