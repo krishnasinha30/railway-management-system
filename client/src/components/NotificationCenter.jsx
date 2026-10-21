@@ -24,6 +24,10 @@ export default function NotificationCenter({ isAuthenticated, authToken, light =
     }
   }, [isAuthenticated])
 
+  const refreshNotifications = useCallback(() => {
+    if (isAuthenticated) loadNotifications()
+  }, [isAuthenticated, loadNotifications])
+
   const receiveNotification = useCallback(notification => {
     setNotifications(current => [notification, ...current.filter(item => item._id !== notification._id)].slice(0, 50))
     setUnreadCount(count => count + 1)
@@ -35,6 +39,11 @@ export default function NotificationCenter({ isAuthenticated, authToken, light =
   }, [loadNotifications])
 
   useEffect(() => {
+    window.addEventListener('focus', refreshNotifications)
+    return () => window.removeEventListener('focus', refreshNotifications)
+  }, [refreshNotifications])
+
+  useEffect(() => {
     if (!liveNotice) return undefined
     const timeout = window.setTimeout(() => setLiveNotice(null), 5000)
     return () => window.clearTimeout(timeout)
@@ -42,7 +51,8 @@ export default function NotificationCenter({ isAuthenticated, authToken, light =
 
   useSocket({
     authToken,
-    onNotification: isAuthenticated ? receiveNotification : undefined
+    onNotification: isAuthenticated ? receiveNotification : undefined,
+    onConnected: refreshNotifications
   })
 
   const markRead = async notification => {
