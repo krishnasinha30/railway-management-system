@@ -65,7 +65,8 @@ const queueBookingUpdate = (io, booking, { title, message }, emailSender, fallba
           pickupLocation: booking.boardingStation?.name || booking.boardingStation?.stationCode || 'Boarding Station',
           boardingStation: booking.boardingStation?.name || booking.boardingStation?.stationCode || 'Boarding Station',
           totalAmount: booking.totalFare,
-          totalFare: booking.totalFare
+          totalFare: booking.totalFare,
+          booking: booking.toObject()
         });
         console.info(`[email] ${result.provider} delivery ${result.messageId} for booking ${booking.bookingReference}`);
       } catch (error) {

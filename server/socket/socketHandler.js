@@ -1,22 +1,9 @@
 const { Server } = require('socket.io');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const { isAllowedOrigin } = require('../config/cors');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'railway-dev-secret';
-
-const getAllowedOrigins = () => {
-  const origins = [
-    'http://localhost:5173',
-    'http://127.0.0.1:5173',
-    'http://localhost:3000',
-    'http://127.0.0.1:3000',
-    process.env.CLIENT_URL,
-    process.env.FRONTEND_URL,
-    process.env.VERCEL_FRONTEND_URL,
-  ].filter(Boolean);
-
-  return [...new Set(origins)];
-};
 
 function configureSocket(httpServer) {
   // Socket.io lets the backend push updates to connected clients in real time.
@@ -25,9 +12,7 @@ function configureSocket(httpServer) {
   const io = new Server(httpServer, {
     cors: {
       origin: (origin, callback) => {
-        const allowed = getAllowedOrigins();
-
-        if (!origin || allowed.includes(origin) || /https:\/\/.*\.(vercel\.app|netlify\.app|netlify\.com|github\.dev)/i.test(origin)) {
+        if (isAllowedOrigin(origin)) {
           callback(null, true);
           return;
         }

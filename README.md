@@ -42,7 +42,7 @@ npm install
 npm run dev
 ```
 
-Open the Vite URL shown in the terminal, normally `http://localhost:5173`.
+Open the Vite URL shown in the terminal, normally `http://localhost:5173`. If that port is busy, Vite may use another local port; the API and Socket.IO accept localhost development origins on those fallback ports too.
 
 For a production client check, run `npm run build` inside `client`.
 
@@ -166,16 +166,32 @@ SMTP_PASS=
 SMTP_FROM=Rail Center <onboarding@resend.dev>
 ```
 
-For the quick setup, open [resend.com](https://resend.com), choose **Continue with Google**, open **API Keys**, and create/copy a key (typically a 30-second setup, with no credit card needed to start on the free plan). Resend's free-plan limits and account verification requirements can change. For production sending, verify a domain in Resend and use a sender address on that domain as `SMTP_FROM`; the default Resend onboarding sender is intended for initial testing.
+For Resend, open [resend.com](https://resend.com), choose **Continue with Google**, then create an API key. This uses Google only to sign in to Resend; it does not connect your Gmail inbox. Resend's free-plan limits and account verification requirements can change. For production sending, verify a domain in Resend and use a sender address on that domain as `SMTP_FROM`; the default Resend onboarding sender is intended for initial testing.
 
-For local SMTP, use your provider's SMTP host and credentials. With Gmail, enable 2-Step Verification and create an App Password; use `smtp.gmail.com`, port `587`, your Gmail address as `SMTP_USER`, the App Password as `SMTP_PASS`, and a matching sender address for `SMTP_FROM`. Never commit real API keys or SMTP credentials.
+#### Send through Gmail
+
+1. Sign in to the Google account that should send the app's mail. Turn on **2-Step Verification** in Google Account → **Security**.
+2. Open [Google App Passwords](https://myaccount.google.com/apppasswords), create an app password (for example, name it `Rail Center`), and copy it. App Passwords may be unavailable for some managed or Advanced Protection accounts. Use this generated password, not your normal Google password.
+3. In `server/.env` for local development, or the backend host's environment settings for deployment, set:
+
+   ```env
+   RESEND_API_KEY=
+   SMTP_HOST=smtp.gmail.com
+   SMTP_PORT=587
+   SMTP_USER=your-sender@gmail.com
+   SMTP_PASS=your-16-character-app-password
+   SMTP_FROM=Rail Center <your-sender@gmail.com>
+   ```
+
+   Leave `RESEND_API_KEY` empty when you want Gmail SMTP: a configured Resend key takes priority. Keep these credentials on the backend only, and use the same Gmail address for `SMTP_USER` and `SMTP_FROM`.
+4. The email recipient is the email address on the passenger's app account. A booking confirmation/request email includes the booking details and a PDF ticket/receipt. Socket.IO alerts still appear in the app separately. To get Gmail push alerts on your phone, enable notifications for Gmail in the Gmail app/device settings; the website cannot change those settings.
 
 ### Deploy and verify
 
-1. In Render, open the backend service, go to **Environment**, add `RESEND_API_KEY` and `SMTP_FROM` (or the SMTP settings), then save and redeploy. Do not put these secrets in the Vercel frontend.
+1. In Render, open the backend service, go to **Environment**, add either the Resend key or the Gmail SMTP settings above, then save and redeploy. Do not put mail credentials in the Vercel frontend.
 2. In Vercel, only the frontend's existing `VITE_API_URL` and `VITE_SOCKET_URL` are needed; mail credentials must remain on the backend.
 3. Sign in to the application as an administrator, open **Admin management → Email test**, and send a test message to an inbox you can access. The panel reports the provider message ID or the delivery error.
-4. Confirm the message appears in the inbox (and check spam/promotions folders). The endpoint is `POST /api/tests/send-test-email`, accepts `{ "email": "user@example.com" }`, and requires an administrator bearer token.
+4. Make a booking using a passenger account whose email is your Gmail address. Confirm the booking email arrives with the PDF attachment; check Spam/Promotions if needed. The endpoint is `POST /api/tests/send-test-email`, accepts `{ "email": "user@example.com" }`, and requires an administrator bearer token.
 
 Successful real delivery responds with `{ "success": true, "messageId": "..." }`; delivery errors return `{ "success": false, "error": "..." }`. In simulation mode a mock message ID is returned and the backend logs the simulated send.
 

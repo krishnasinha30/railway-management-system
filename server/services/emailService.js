@@ -1,4 +1,5 @@
 const nodemailer = require('nodemailer');
+const { createBookingReceiptPdf } = require('./bookingReceiptPdf');
 
 const DEFAULT_FROM = 'Rail Center <onboarding@resend.dev>';
 const SMTP_PORT = Number(process.env.SMTP_PORT || 587);
@@ -47,10 +48,16 @@ const buildEmailTemplate = ({
   pickupLocation,
   totalAmount,
   actionNote,
+  bookingDetails = [],
   accentColor = '#4f46e5'
 }) => {
   const formattedFare = formatAmount(totalAmount);
   const formattedDate = formatDate(journeyDate);
+  const bookingDetailRows = bookingDetails.map(({ label, value }) => `
+                  <tr>
+                    <td style="padding:12px 0;color:#64748b;font-size:14px;border-bottom:1px solid #f1f5f9;">${escapeHtml(label)}</td>
+                    <td style="padding:12px 0;color:#0f172a;font-size:14px;font-weight:700;text-align:right;border-bottom:1px solid #f1f5f9;">${escapeHtml(value)}</td>
+                  </tr>`).join('');
 
   return `<!doctype html>
 <html lang="en">
@@ -136,6 +143,7 @@ const buildEmailTemplate = ({
                     <td style="padding:12px 0;color:#64748b;font-size:14px;border-bottom:1px solid #f1f5f9;">Pickup / Boarding</td>
                     <td style="padding:12px 0;color:#0f172a;font-size:14px;font-weight:700;text-align:right;border-bottom:1px solid #f1f5f9;">${escapeHtml(pickupLocation || 'Station')}</td>
                   </tr>
+                  ${bookingDetailRows}
                   <tr>
                     <td style="padding:12px 0;color:#64748b;font-size:14px;">Total Paid in ₹</td>
                     <td style="padding:12px 0;color:#0f172a;font-size:15px;font-weight:800;text-align:right;">${escapeHtml(formattedFare)}</td>
@@ -173,31 +181,58 @@ const buildEmailTemplate = ({
  * 1. Booking Confirmation Email
  */
 const sendBookingConfirmationEmail = data => {
+  const booking = data.booking || {};
+  const isConfirmed = !booking.bookingStatus || booking.bookingStatus === 'Confirmed';
   const trainOrItem = data.trainName || data.vehicleName || data.itemName || 'Express Train';
   const pickup = data.pickupLocation || data.boardingStation || 'Not provided';
   const total = data.totalAmount || data.totalFare || 0;
   const refId = data.referenceId || data.bookingReference || 'N/A';
   const user = data.userName || data.passengerName || 'Traveler';
+  const destination = booking.destinationStation?.name || booking.destinationStation?.stationCode || 'Not provided';
+  const seatDetails = (booking.passengers || [])
+    .map(passenger => [passenger.coachNumber, passenger.seatNumber].filter(Boolean).join(' / '))
+    .filter(Boolean)
+    .join(', ') || 'Not allocated';
+  const bookingDetails = [
+    { label: 'PNR', value: booking.pnrNumber || 'Pending' },
+    { label: 'Destination', value: destination },
+    { label: 'Class / category', value: [booking.travelClass, booking.passengerCategory].filter(Boolean).join(' / ') || 'Not provided' },
+    { label: 'Passengers', value: String(booking.passengerCount || booking.passengers?.length || 1) },
+    { label: 'Coach / seat', value: seatDetails },
+    { label: 'Booking status', value: booking.bookingStatus || 'Confirmed' },
+    { label: 'Payment', value: [booking.paymentStatus, booking.paymentMethod].filter(Boolean).join(' via ') || 'Not provided' }
+  ];
+  const attachment = booking.bookingReference
+    ? {
+        filename: `${String(booking.bookingReference).replace(/[^a-zA-Z0-9_-]/g, '-')}-ticket.pdf`,
+        content: createBookingReceiptPdf(booking),
+        contentType: 'application/pdf'
+      }
+    : null;
 
   return deliver({
     to: data.email,
-    subject: `Booking Confirmed [${refId}] · Rail Center`,
+    subject: `${isConfirmed ? 'Booking Confirmed' : 'Booking Request Received'} [${refId}] · Rail Center`,
     html: buildEmailTemplate({
-      title: 'Booking Confirmed',
-      subtitle: `Your booking ${refId} is confirmed`,
-      badgeText: 'CONFIRMED',
-      badgeBg: '#10b981',
-      accentColor: '#059669',
+      title: isConfirmed ? 'Booking Confirmed' : 'Booking Request Received',
+      subtitle: `Your booking ${refId} is ${booking.bookingStatus || 'confirmed'}`,
+      badgeText: booking.bookingStatus || 'CONFIRMED',
+      badgeBg: isConfirmed ? '#10b981' : '#0284c7',
+      accentColor: isConfirmed ? '#059669' : '#0284c7',
       greeting: user,
-      intro: 'Thank you for booking with Rail Center! Your journey is confirmed. Please review your booking details below.',
+      intro: isConfirmed
+        ? 'Thank you for booking with Rail Center! Your booking status and journey details are below. The attached PDF contains your simulated ticket and receipt.'
+        : 'We received your booking request. It is not confirmed yet; see the current status and details below. The attached PDF is a simulated booking record.',
       referenceId: refId,
       itemName: trainOrItem,
       journeyDate: data.journeyDate,
       pickupLocation: pickup,
       totalAmount: total,
-      actionNote: 'Please arrive at the boarding station at least 20 minutes prior to scheduled departure with a valid ID.'
+      bookingDetails,
+      actionNote: 'Academic simulation only: this ticket and payment record are not valid for travel or real payment.'
     }),
-    text: `Hi ${user},\n\nYour booking is confirmed!\n\nReference ID: ${refId}\nTrain / Item: ${trainOrItem}\nJourney Date: ${formatDate(data.journeyDate)}\nPickup Location: ${pickup}\nTotal Amount: ${formatAmount(total)}\n\nThank you for choosing Rail Center.`
+    text: `Hi ${user},\n\nYour booking status is ${booking.bookingStatus || 'Confirmed'}.\n\nReference ID: ${refId}\nPNR: ${booking.pnrNumber || 'Pending'}\nTrain: ${trainOrItem}\nRoute: ${pickup} to ${destination}\nJourney Date: ${formatDate(data.journeyDate)}\nClass: ${booking.travelClass || 'Not provided'}\nPassengers: ${booking.passengerCount || booking.passengers?.length || 1}\nCoach / seat: ${seatDetails}\nPayment: ${booking.paymentStatus || 'Not provided'} via ${booking.paymentMethod || 'Not provided'}\nTotal Amount: ${formatAmount(total)}\n\nThe simulated ticket and receipt PDF is attached. This academic simulation is not valid for travel or real payment.`,
+    ...(attachment ? { attachments: [attachment] } : {})
   });
 };
 
@@ -304,7 +339,14 @@ async function sendWithResend(message) {
       to: [message.to],
       subject: message.subject,
       html: message.html,
-      text: message.text
+      text: message.text,
+      ...(message.attachments?.length ? {
+        attachments: message.attachments.map(attachment => ({
+          filename: attachment.filename,
+          content: Buffer.from(attachment.content).toString('base64'),
+          contentType: attachment.contentType
+        }))
+      } : {})
     }),
     signal: AbortSignal.timeout(10000)
   });
@@ -346,7 +388,8 @@ async function sendWithSmtp(message) {
     to: message.to,
     subject: message.subject,
     html: message.html,
-    text: message.text
+    text: message.text,
+    attachments: message.attachments
   });
 
   return { messageId: result.messageId, provider: 'smtp' };
