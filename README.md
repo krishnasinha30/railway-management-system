@@ -155,43 +155,43 @@ The backend queues branded booking-confirmation and cancellation emails after su
 
 ### Configure a provider
 
-Copy the email settings into `server/.env` (or configure them as backend environment variables). `RESEND_API_KEY` is preferred. If Resend is not configured, complete SMTP settings are used; if neither provider is configured, the service logs a mock delivery instead of failing a booking.
+Configure email credentials in `server/.env` locally or in the backend host's environment settings. Gmail API (HTTPS) is used when all `GMAIL_API_*` credentials are set; otherwise the service tries Resend, then SMTP. If no provider is configured, email is simulated and no message is sent.
 
 ```env
-RESEND_API_KEY=re_...
-SMTP_HOST=
-SMTP_PORT=587
-SMTP_USER=
-SMTP_PASS=
-SMTP_FROM=Rail Center <onboarding@resend.dev>
+GMAIL_API_USER=your-gmail@gmail.com
+GMAIL_API_CLIENT_ID=
+GMAIL_API_CLIENT_SECRET=
+GMAIL_API_REFRESH_TOKEN=
+SMTP_FROM=Rail Center <your-gmail@gmail.com>
 ```
 
-For Resend, open [resend.com](https://resend.com), choose **Continue with Google**, then create an API key. This uses Google only to sign in to Resend; it does not connect your Gmail inbox. Resend's free-plan limits and account verification requirements can change. For production sending, verify a domain in Resend and use a sender address on that domain as `SMTP_FROM`; the default Resend onboarding sender is intended for initial testing.
+#### Send from Gmail through the Gmail API
 
-#### Send through Gmail
+Gmail API sends mail over HTTPS, so it avoids Render's SMTP port timeout. It sends as the Google account that authorized the OAuth refresh token.
 
-1. Sign in to the Google account that should send the app's mail. Turn on **2-Step Verification** in Google Account → **Security**.
-2. Open [Google App Passwords](https://myaccount.google.com/apppasswords), create an app password (for example, name it `Rail Center`), and copy it. App Passwords may be unavailable for some managed or Advanced Protection accounts. Use this generated password, not your normal Google password.
-3. In `server/.env` for local development, or the backend host's environment settings for deployment, set:
+1. In [Google Cloud Console](https://console.cloud.google.com/), create/select a project and enable **Gmail API**.
+2. Configure the OAuth consent screen. For an External app in Testing, add `krishnasinha19701@gmail.com` under **Test users**. A refresh token issued while the app remains in Testing may expire after seven days.
+3. Create an OAuth client ID. For the OAuth Playground flow below, choose a **Web application** and add `https://developers.google.com/oauthplayground` as an authorized redirect URI.
+4. Open [OAuth 2.0 Playground](https://developers.google.com/oauthplayground), open its settings, enable **Use your own OAuth credentials**, and enter the OAuth client ID and secret.
+5. In Step 1, enter `https://www.googleapis.com/auth/gmail.send` as the scope and authorize using `krishnasinha19701@gmail.com`. In Step 2, exchange the code and copy the **refresh token**. Never share or commit OAuth client secrets or refresh tokens.
+6. In Render → your backend service → **Environment**, set:
 
    ```env
-   RESEND_API_KEY=
-   SMTP_HOST=smtp.gmail.com
-   SMTP_PORT=587
-   SMTP_USER=your-sender@gmail.com
-   SMTP_PASS=your-16-character-app-password
-   SMTP_FROM=Rail Center <your-sender@gmail.com>
+   GMAIL_API_USER=krishnasinha19701@gmail.com
+   GMAIL_API_CLIENT_ID=your-oauth-client-id
+   GMAIL_API_CLIENT_SECRET=your-oauth-client-secret
+   GMAIL_API_REFRESH_TOKEN=your-oauth-refresh-token
+   SMTP_FROM=Rail Center <krishnasinha19701@gmail.com>
    ```
 
-   Leave `RESEND_API_KEY` empty when you want Gmail SMTP: a configured Resend key takes priority. Keep these credentials on the backend only, and use the same Gmail address for `SMTP_USER` and `SMTP_FROM`.
-4. The email recipient is the email address on the passenger's app account. A booking confirmation/request email includes the booking details and a PDF ticket/receipt. Socket.IO alerts still appear in the app separately. To get Gmail push alerts on your phone, enable notifications for Gmail in the Gmail app/device settings; the website cannot change those settings.
+   Keep credentials on the backend only. Gmail API credentials take priority over Resend and SMTP; no `SMTP_PASS` or Resend key is needed. The email recipient is the passenger account's email. Booking emails include booking details and the PDF ticket/receipt.
 
 ### Deploy and verify
 
-1. In Render, open the backend service, go to **Environment**, add either the Resend key or the Gmail SMTP settings above, then save and redeploy. Do not put mail credentials in the Vercel frontend.
-2. In Vercel, only the frontend's existing `VITE_API_URL` and `VITE_SOCKET_URL` are needed; mail credentials must remain on the backend.
-3. Sign in to the application as an administrator, open **Admin management → Email test**, and send a test message to an inbox you can access. The panel reports the provider message ID or the delivery error.
-4. Make a booking using a passenger account whose email is your Gmail address. Confirm the booking email arrives with the PDF attachment; check Spam/Promotions if needed. The endpoint is `POST /api/tests/send-test-email`, accepts `{ "email": "user@example.com" }`, and requires an administrator bearer token.
+1. Save the Gmail API credentials in the Render backend environment and wait for the service to redeploy. Do not put mail credentials in the Netlify frontend.
+2. The Netlify frontend continues using its existing API proxy; mail credentials must remain on the backend and do not require a frontend rebuild.
+3. Send a diagnostic message to your inbox with `POST /api/tests/send-test-email` and body `{ "email": "user@example.com" }`. A real delivery returns the provider message ID; an error or simulated response means no email was sent.
+4. After the test email succeeds, make a booking using a passenger account whose email is your Gmail address. Confirm the booking email arrives with its PDF attachment; check Spam/Promotions if needed.
 
 Successful real delivery responds with `{ "success": true, "messageId": "..." }`; delivery errors return `{ "success": false, "error": "..." }`. In simulation mode a mock message ID is returned and the backend logs the simulated send.
 

@@ -322,6 +322,110 @@ const sendTestEmail = email => deliver({
 });
 
 const isSmtpConfigured = () => Boolean(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS);
+const gmailApiCredentials = [
+  'GMAIL_API_USER',
+  'GMAIL_API_CLIENT_ID',
+  'GMAIL_API_CLIENT_SECRET',
+  'GMAIL_API_REFRESH_TOKEN'
+];
+
+const isGmailApiConfigured = () => gmailApiCredentials.some(name => process.env[name]);
+
+const encodeMimeBody = value => Buffer.from(value, 'utf8')
+  .toString('base64')
+  .match(/.{1,76}/g)
+  .join('\r\n');
+
+const safeMimeHeader = value => {
+  const header = String(value || '').replace(/[\r\n]/g, ' ').trim();
+  if (!header) throw new Error('Email header value is required');
+  return header;
+};
+
+const encodeMimeHeader = value => `=?UTF-8?B?${Buffer.from(value, 'utf8').toString('base64')}?=`;
+
+function createRawMimeMessage(message) {
+  const sender = process.env.SMTP_FROM || `Rail Center <${process.env.GMAIL_API_USER}>`;
+  const boundary = `rail-center-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+  const lines = [
+    `From: ${safeMimeHeader(sender)}`,
+    `To: ${safeMimeHeader(message.to)}`,
+    `Subject: ${encodeMimeHeader(safeMimeHeader(message.subject))}`,
+    'MIME-Version: 1.0',
+    `Content-Type: multipart/mixed; boundary="${boundary}"`,
+    '',
+    `--${boundary}`,
+    'Content-Type: multipart/alternative; boundary="rail-center-alternative"',
+    '',
+    '--rail-center-alternative',
+    'Content-Type: text/plain; charset=UTF-8',
+    'Content-Transfer-Encoding: base64',
+    '',
+    encodeMimeBody(message.text || ''),
+    '--rail-center-alternative',
+    'Content-Type: text/html; charset=UTF-8',
+    'Content-Transfer-Encoding: base64',
+    '',
+    encodeMimeBody(message.html || ''),
+    '--rail-center-alternative--'
+  ];
+
+  for (const attachment of message.attachments || []) {
+    const filename = safeMimeHeader(attachment.filename).replace(/["\\]/g, '_');
+    const contentType = safeMimeHeader(attachment.contentType || 'application/octet-stream');
+    lines.push(
+      `--${boundary}`,
+      `Content-Type: ${contentType}; name="${filename}"`,
+      'Content-Transfer-Encoding: base64',
+      `Content-Disposition: attachment; filename="${filename}"`,
+      '',
+      encodeMimeBody(attachment.content)
+    );
+  }
+
+  lines.push(`--${boundary}--`, '');
+  return Buffer.from(lines.join('\r\n')).toString('base64url');
+}
+
+async function sendWithGmailApi(message) {
+  const missing = gmailApiCredentials.filter(name => !process.env[name]);
+  if (missing.length) {
+    throw new Error(`Gmail API configuration is incomplete. Set: ${missing.join(', ')}`);
+  }
+
+  const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      client_id: process.env.GMAIL_API_CLIENT_ID,
+      client_secret: process.env.GMAIL_API_CLIENT_SECRET,
+      refresh_token: process.env.GMAIL_API_REFRESH_TOKEN,
+      grant_type: 'refresh_token'
+    }),
+    signal: AbortSignal.timeout(10000)
+  });
+  const token = await tokenResponse.json().catch(() => ({}));
+  if (!tokenResponse.ok || !token.access_token) {
+    throw new Error(token.error_description || token.error || `Google OAuth token request failed with HTTP ${tokenResponse.status}`);
+  }
+
+  const response = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token.access_token}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ raw: createRawMimeMessage(message) }),
+    signal: AbortSignal.timeout(10000)
+  });
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok || !result.id) {
+    const detail = result.error?.message || result.error_description || `Gmail API send failed with HTTP ${response.status}`;
+    throw new Error(detail);
+  }
+
+  return { messageId: result.id, provider: 'gmail-api' };
+}
 
 /**
  * Resend Dispatcher via HTTPS POST (Port 443) using native fetch()
@@ -397,16 +501,23 @@ async function sendWithSmtp(message) {
 
 /**
  * Unified Deliver Pipeline:
- * 1. Resend (Primary HTTPS) if RESEND_API_KEY is present
- * 2. Nodemailer SMTP (Secondary Fallback) if SMTP credentials exist
- * 3. Simulation Mode if neither key is set (logs informative mock without crashing)
+ * 1. Gmail API (HTTPS) if Gmail OAuth credentials are present
+ * 2. Resend (HTTPS) if RESEND_API_KEY is present
+ * 3. Nodemailer SMTP if SMTP credentials exist
+ * 4. Simulation Mode if no provider is configured
  */
 async function deliver(message) {
   if (!message.to) {
     throw new Error('Cannot send email: recipient address is required');
   }
 
-  // 1. Primary: Resend API via HTTPS
+  if (isGmailApiConfigured()) {
+    const res = await sendWithGmailApi(message);
+    console.info(`[email:gmail-api] Delivered to ${message.to} (Message ID: ${res.messageId})`);
+    return res;
+  }
+
+  // Resend API via HTTPS
   if (process.env.RESEND_API_KEY) {
     try {
       const res = await sendWithResend(message);
@@ -427,7 +538,7 @@ async function deliver(message) {
     }
   }
 
-  // 2. Secondary: Nodemailer SMTP
+  // Nodemailer SMTP
   if (isSmtpConfigured()) {
     const res = await sendWithSmtp(message);
     console.info(`[email:smtp] Delivered to ${message.to} (Message ID: ${res.messageId})`);
