@@ -1,5 +1,6 @@
 const assert = require('node:assert/strict');
 const test = require('node:test');
+const dns = require('node:dns/promises');
 const { createBookingReceiptPdf } = require('../services/bookingReceiptPdf');
 const { sendBookingConfirmationEmail } = require('../services/emailService');
 
@@ -34,12 +35,20 @@ test('attaches the PDF receipt to a Resend booking email', async () => {
   const previousFetch = global.fetch;
   const previousEnvironment = {
     RESEND_API_KEY: process.env.RESEND_API_KEY,
+    SMTP_HOST: process.env.SMTP_HOST,
+    SMTP_PORT: process.env.SMTP_PORT,
+    SMTP_USER: process.env.SMTP_USER,
+    SMTP_PASS: process.env.SMTP_PASS,
     GMAIL_API_USER: process.env.GMAIL_API_USER,
     GMAIL_API_CLIENT_ID: process.env.GMAIL_API_CLIENT_ID,
     GMAIL_API_CLIENT_SECRET: process.env.GMAIL_API_CLIENT_SECRET,
     GMAIL_API_REFRESH_TOKEN: process.env.GMAIL_API_REFRESH_TOKEN
   };
   let requestBody;
+  delete process.env.SMTP_HOST;
+  delete process.env.SMTP_PORT;
+  delete process.env.SMTP_USER;
+  delete process.env.SMTP_PASS;
   delete process.env.GMAIL_API_USER;
   delete process.env.GMAIL_API_CLIENT_ID;
   delete process.env.GMAIL_API_CLIENT_SECRET;
@@ -79,6 +88,10 @@ test('sends booking emails and PDF receipts using the Gmail API', async () => {
   const previousFetch = global.fetch;
   const previousEnvironment = {
     RESEND_API_KEY: process.env.RESEND_API_KEY,
+    SMTP_HOST: process.env.SMTP_HOST,
+    SMTP_PORT: process.env.SMTP_PORT,
+    SMTP_USER: process.env.SMTP_USER,
+    SMTP_PASS: process.env.SMTP_PASS,
     SMTP_FROM: process.env.SMTP_FROM,
     GMAIL_API_USER: process.env.GMAIL_API_USER,
     GMAIL_API_CLIENT_ID: process.env.GMAIL_API_CLIENT_ID,
@@ -86,6 +99,10 @@ test('sends booking emails and PDF receipts using the Gmail API', async () => {
     GMAIL_API_REFRESH_TOKEN: process.env.GMAIL_API_REFRESH_TOKEN
   };
   const requests = [];
+  delete process.env.SMTP_HOST;
+  delete process.env.SMTP_PORT;
+  delete process.env.SMTP_USER;
+  delete process.env.SMTP_PASS;
   Object.assign(process.env, {
     RESEND_API_KEY: 'resend-must-not-be-used',
     SMTP_FROM: 'Rail Center <sender@gmail.com>',
@@ -124,6 +141,81 @@ test('sends booking emails and PDF receipts using the Gmail API', async () => {
     assert.ok(!requests.some(request => request.url === 'https://api.resend.com/emails'));
   } finally {
     global.fetch = previousFetch;
+    for (const [name, value] of Object.entries(previousEnvironment)) {
+      if (value === undefined) delete process.env[name];
+      else process.env[name] = value;
+    }
+  }
+});
+
+test('prefers SMTP over Gmail API and Resend when SMTP is configured', async () => {
+  const nodemailer = require('nodemailer');
+  const originalCreateTransport = nodemailer.createTransport;
+  const originalLookup = dns.lookup;
+  const previousEnvironment = {
+    RESEND_API_KEY: process.env.RESEND_API_KEY,
+    SMTP_HOST: process.env.SMTP_HOST,
+    SMTP_PORT: process.env.SMTP_PORT,
+    SMTP_USER: process.env.SMTP_USER,
+    SMTP_PASS: process.env.SMTP_PASS,
+    SMTP_FROM: process.env.SMTP_FROM,
+    GMAIL_API_USER: process.env.GMAIL_API_USER,
+    GMAIL_API_CLIENT_ID: process.env.GMAIL_API_CLIENT_ID,
+    GMAIL_API_CLIENT_SECRET: process.env.GMAIL_API_CLIENT_SECRET,
+    GMAIL_API_REFRESH_TOKEN: process.env.GMAIL_API_REFRESH_TOKEN
+  };
+  let smtpOptions;
+  let sentMessage;
+  let lookupOptions;
+  Object.assign(process.env, {
+    RESEND_API_KEY: 'resend-must-not-be-used',
+    SMTP_HOST: 'smtp.gmail.com',
+    SMTP_PORT: '587',
+    SMTP_USER: 'sender@gmail.com',
+    SMTP_PASS: 'test-app-password',
+    SMTP_FROM: 'Rail Center <sender@gmail.com>',
+    GMAIL_API_USER: 'sender@gmail.com',
+    GMAIL_API_CLIENT_ID: 'test-client-id',
+    GMAIL_API_CLIENT_SECRET: 'test-client-secret',
+    GMAIL_API_REFRESH_TOKEN: 'test-refresh-token'
+  });
+  nodemailer.createTransport = options => {
+    smtpOptions = options;
+    return {
+      sendMail: async message => {
+        sentMessage = message;
+        return { messageId: 'smtp-message-id' };
+      }
+    };
+  };
+  dns.lookup = async (_host, options) => {
+    lookupOptions = options;
+    return { address: '142.250.72.5', family: 4 };
+  };
+
+  try {
+    const result = await sendBookingConfirmationEmail({
+      email: 'passenger@example.com',
+      userName: 'Test Passenger',
+      referenceId: 'RMS-2026-ABC123',
+      journeyDate: '2026-12-10',
+      totalFare: 850,
+      booking: sampleBooking()
+    });
+
+    assert.equal(result.provider, 'smtp');
+    assert.equal(result.messageId, 'smtp-message-id');
+    assert.equal(smtpOptions.host, '142.250.72.5');
+    assert.equal(smtpOptions.port, 587);
+    assert.deepEqual(lookupOptions, { family: 4 });
+    assert.equal(smtpOptions.tls.servername, 'smtp.gmail.com');
+    assert.equal(smtpOptions.auth.user, 'sender@gmail.com');
+    assert.equal(sentMessage.to, 'passenger@example.com');
+    assert.equal(sentMessage.attachments[0].filename, 'RMS-2026-ABC123-ticket.pdf');
+    assert.equal(sentMessage.attachments[0].content.subarray(0, 5).toString(), '%PDF-');
+  } finally {
+    nodemailer.createTransport = originalCreateTransport;
+    dns.lookup = originalLookup;
     for (const [name, value] of Object.entries(previousEnvironment)) {
       if (value === undefined) delete process.env[name];
       else process.env[name] = value;

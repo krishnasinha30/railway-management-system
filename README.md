@@ -155,40 +155,27 @@ The backend queues branded booking-confirmation and cancellation emails after su
 
 ### Configure a provider
 
-Configure email credentials in `server/.env` locally or in the backend host's environment settings. Gmail API (HTTPS) is used when all `GMAIL_API_*` credentials are set; otherwise the service tries Resend, then SMTP. If no provider is configured, email is simulated and no message is sent.
+Configure email credentials in `server/.env` locally or in the backend host's environment settings. When SMTP credentials are present, SMTP is always selected first, including when optional Gmail API or Resend credentials are also present. Without SMTP, the service tries Gmail API, then Resend. If no provider is configured, email is simulated and no message is sent.
 
 ```env
-GMAIL_API_USER=your-gmail@gmail.com
-GMAIL_API_CLIENT_ID=
-GMAIL_API_CLIENT_SECRET=
-GMAIL_API_REFRESH_TOKEN=
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=your-gmail@gmail.com
+SMTP_PASS=your-16-character-app-password
 SMTP_FROM=Rail Center <your-gmail@gmail.com>
 ```
 
-#### Send from Gmail through the Gmail API
+#### Send from Gmail through SMTP
 
-Gmail API sends mail over HTTPS, so it avoids Render's SMTP port timeout. It sends as the Google account that authorized the OAuth refresh token.
+1. Enable 2-Step Verification on the Google account, then create an App Password at [Google App Passwords](https://myaccount.google.com/apppasswords). Use that generated password for `SMTP_PASS`, not the regular Google password.
+2. In Render → backend service → **Environment**, set the SMTP variables above with `SMTP_USER` and `SMTP_FROM` matching your Gmail address. Keep the App Password private and only in backend settings.
+3. If you also configured Gmail API or Resend, SMTP still takes priority when the SMTP host, username, and password are all set.
 
-1. In [Google Cloud Console](https://console.cloud.google.com/), create/select a project and enable **Gmail API**.
-2. Configure the OAuth consent screen. For an External app in Testing, add `krishnasinha19701@gmail.com` under **Test users**. A refresh token issued while the app remains in Testing may expire after seven days.
-3. Create an OAuth client ID. For the OAuth Playground flow below, choose a **Web application** and add `https://developers.google.com/oauthplayground` as an authorized redirect URI.
-4. Open [OAuth 2.0 Playground](https://developers.google.com/oauthplayground), open its settings, enable **Use your own OAuth credentials**, and enter the OAuth client ID and secret.
-5. In Step 1, enter `https://www.googleapis.com/auth/gmail.send` as the scope and authorize using `krishnasinha19701@gmail.com`. In Step 2, exchange the code and copy the **refresh token**. Never share or commit OAuth client secrets or refresh tokens.
-6. In Render → your backend service → **Environment**, set:
-
-   ```env
-   GMAIL_API_USER=krishnasinha19701@gmail.com
-   GMAIL_API_CLIENT_ID=your-oauth-client-id
-   GMAIL_API_CLIENT_SECRET=your-oauth-client-secret
-   GMAIL_API_REFRESH_TOKEN=your-oauth-refresh-token
-   SMTP_FROM=Rail Center <krishnasinha19701@gmail.com>
-   ```
-
-   Keep credentials on the backend only. Gmail API credentials take priority over Resend and SMTP; no `SMTP_PASS` or Resend key is needed. The email recipient is the passenger account's email. Booking emails include booking details and the PDF ticket/receipt.
+The recipient is the passenger account's email. Booking emails include the booking details and PDF ticket/receipt. Render previously returned `Connection timeout` when connecting to `smtp.gmail.com:587`; if that persists after deployment, SMTP egress from the Render service is unavailable and needs to be resolved by Render Support or by running the backend on a host that allows outbound SMTP.
 
 ### Deploy and verify
 
-1. Save the Gmail API credentials in the Render backend environment and wait for the service to redeploy. Do not put mail credentials in the Netlify frontend.
+1. Save the Gmail SMTP settings in the Render backend environment and wait for the service to redeploy. Do not put mail credentials in the Netlify frontend.
 2. The Netlify frontend continues using its existing API proxy; mail credentials must remain on the backend and do not require a frontend rebuild.
 3. Send a diagnostic message to your inbox with `POST /api/tests/send-test-email` and body `{ "email": "user@example.com" }`. A real delivery returns the provider message ID; an error or simulated response means no email was sent.
 4. After the test email succeeds, make a booking using a passenger account whose email is your Gmail address. Confirm the booking email arrives with its PDF attachment; check Spam/Promotions if needed.

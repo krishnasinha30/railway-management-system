@@ -1,4 +1,6 @@
 const nodemailer = require('nodemailer');
+const dns = require('node:dns/promises');
+const net = require('node:net');
 const { createBookingReceiptPdf } = require('./bookingReceiptPdf');
 
 const DEFAULT_FROM = 'Rail Center <onboarding@resend.dev>';
@@ -81,7 +83,6 @@ const buildEmailTemplate = ({
       <tr>
         <td align="center">
           <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="max-width:600px;background-color:#ffffff;border-radius:20px;overflow:hidden;box-shadow:0 10px 25px -5px rgba(15,23,42,0.08), 0 8px 10px -6px rgba(15,23,42,0.04);">
-            
             <!-- BRAND HEADER -->
             <tr>
               <td style="background:linear-gradient(135deg, #0f172a 0%, #1e293b 100%);padding:32px 36px;color:#ffffff;text-align:left;">
@@ -473,15 +474,19 @@ async function sendWithResend(message) {
  * Secondary fallback for local development or custom SMTP servers
  */
 async function sendWithSmtp(message) {
+  const smtpHost = process.env.SMTP_HOST;
+  const smtpAddress = net.isIPv4(smtpHost)
+    ? smtpHost
+    : (await dns.lookup(smtpHost, { family: 4 })).address;
   const transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
+    host: smtpAddress,
     port: SMTP_PORT,
     secure: SMTP_PORT === 465,
+    tls: net.isIPv4(smtpHost) ? undefined : { servername: smtpHost },
     auth: {
       user: process.env.SMTP_USER,
       pass: process.env.SMTP_PASS
     },
-    family: 4, // Force IPv4 to prevent ENETUNREACH errors on cloud/container environments
     connectionTimeout: 10000,
     greetingTimeout: 10000,
     socketTimeout: 15000
@@ -501,14 +506,20 @@ async function sendWithSmtp(message) {
 
 /**
  * Unified Deliver Pipeline:
- * 1. Gmail API (HTTPS) if Gmail OAuth credentials are present
- * 2. Resend (HTTPS) if RESEND_API_KEY is present
- * 3. Nodemailer SMTP if SMTP credentials exist
+ * 1. Nodemailer SMTP if SMTP credentials exist
+ * 2. Gmail API (HTTPS) if Gmail OAuth credentials are present
+ * 3. Resend (HTTPS) if RESEND_API_KEY is present
  * 4. Simulation Mode if no provider is configured
  */
 async function deliver(message) {
   if (!message.to) {
     throw new Error('Cannot send email: recipient address is required');
+  }
+
+  if (isSmtpConfigured()) {
+    const res = await sendWithSmtp(message);
+    console.info(`[email:smtp] Delivered to ${message.to} (Message ID: ${res.messageId})`);
+    return res;
   }
 
   if (isGmailApiConfigured()) {
@@ -536,13 +547,6 @@ async function deliver(message) {
         throw new Error(`Resend failed: ${resendError.message}; SMTP fallback failed: ${smtpError.message}`);
       }
     }
-  }
-
-  // Nodemailer SMTP
-  if (isSmtpConfigured()) {
-    const res = await sendWithSmtp(message);
-    console.info(`[email:smtp] Delivered to ${message.to} (Message ID: ${res.messageId})`);
-    return res;
   }
 
   // 3. Simulation Mode (Server does NOT crash when keys are missing)
